@@ -1,0 +1,3845 @@
+---
+title: "Environmental filtering and habitat matchinging of riverine invertebrate communities"
+subtitle: "NRSA DisEQ-Analyses"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 4
+    fig_caption: yes
+    latex_engine: xelatex
+always_allow_html: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(results = "hold", fig.pos = "H", fig.align = "center", out.width = "92.5%")
+options(knitr.graphics.error = FALSE)
+kableExtra::usepackage_latex("float")
+```
+
+```{r Load Package for R Markdown, include = FALSE}
+library(kableExtra)
+library(knitr)
+```
+
+
+\newpage
+# Questions
+
+1. **How do filtering and habitat matching vary across ecoregions?**
+
+2. **How does functional diversity vary across ecoregions?**
+
+3. **Which functional traits are linked to filtering and habitat matching?**
+
+4. **What are the environmental predictors of functional trait abundances?**
+
+
+```{r Load Packages & Data, include = FALSE}
+## Packages for analyses
+library(agricolae)
+library(broom)
+library(car)
+library(effectsize)
+library(FD)
+library(gbm)
+library(lmerTest)
+library(parallel)
+library(performance)
+library(qqplotr)
+library(snow)
+library(vegan)
+
+## Load the tidyverse
+library(tidyverse)
+
+## Load the workspace containing the DisEQ pipeline output
+#load("data_analysis/1-DisEQ_pipeline/1-DisEQ_pipeline-DisEQ_data.RData")
+
+## Load the taxa-by-traits table (categorical) for trait diversity analyses
+trait.table.categorical <- read.csv("data/taxa_by_traits-categorical.csv", row.names = 1)
+
+## Load the taxa-by-traits table (binary) for trait-DisEQ and trait-environment analyses
+trait.table.binary <- read.csv("data/taxa_by_traits-binary.csv")
+
+## Set seed for reproducibility
+set.seed(12345)
+
+## Load the final workspace
+#load("data_analysis/2-DisEQ_analyses/2-DisEQ_analyses-Workspace.RData")
+
+## Load the reduced workspace
+load("data_analysis/2-DisEQ_analyses/2-DisEQ_analyses-Reduced_Workspace.RData")
+
+## Set number of cores for parallel processing
+n.cores <- detectCores() - 1
+```
+
+
+
+
+\newpage
+# Q1: How do filtering and habitat matching vary across ecoregions?
+
+## Filtering & Habitat Matching ANOVAs
+
+Filtering and habitat matching were compared by ecoregion to determine if filtering and mismatch vary spatially (**Question 1**). Filtering and mismatch were compared by ecoregion using a one-way ANOVA with Type III sums-of-squares [`Anova()` in the `car` package]; post-hoc Tukey's HSD tests [`HSD.test()` in the `agricolae` package) were used to identify differences among groups. ANOVA assumptions were inspected graphically using `check_model()` in the `performance` package. Effect sizes for the ANOVAs were calculated as $\eta^2$ using `eta_squared()` in the `effectsize` package.
+
+### Filtering ANOVA
+
+```{r Filtering ANOVA, echo = TRUE}
+filtering.aov <- lm(filtering.scaled ~ ecoregion, data = DisEQ.analysis.results)
+```
+
+\vspace{4pt}
+
+```{r Filtering ANOVA Diagnostic Plots, echo = FALSE, fig.cap = "Diagnostic plots for the filtering ANOVA."}
+check_model(filtering.aov)
+```
+
+\vspace{4pt}
+
+```{r Filtering ANOVA Results, echo = FALSE}
+kable(
+	tidy(Anova(filtering.aov, type = "III")),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the environmental filtering ANOVA.",
+	col.names = c("Term", "Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Effect Size-Filtering ANOVA, echo = FALSE}
+kable(
+	eta_squared(filtering.aov, partial = FALSE, ci = 0.95),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Effect size for ecoregion in the environmental filtering ANOVA.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Filtering ANOVA Tukey HSD, echo = FALSE}
+## Tukey groups
+filtering.groups <- HSD.test(filtering.aov, trt = "ecoregion", group = TRUE)
+
+## Export the Tukey group table
+kable(
+	filtering.groups$groups,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Tukey groups assigned to ecoregions differing in environmental filtering.",
+	col.names = c("Mean Filtering", "Grouping")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+### Habitat Matching ANOVA
+
+```{r Habitat Matching ANOVA, echo = TRUE}
+mismatch.aov <- lm(mismatch.scaled ~ ecoregion, data = DisEQ.analysis.results)
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching ANOVA Diagnostic Plots, fig.cap = "Diagnostic plots for the mismatch ANOVA."}
+check_model(mismatch.aov)
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching ANOVA Results, echo = FALSE}
+kable(
+	tidy(Anova(mismatch.aov, type = "III")),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the habitat matching ANOVA.",
+	col.names = c("Term", "Sums-of-Squares", "df", "F", "P-value")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Effect Size-Habitat Matching ANOVA, echo = FALSE}
+kable(
+	eta_squared(mismatch.aov, partial = FALSE, ci = 0.95),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Effect size for ecoregion in the habitat matching ANOVA.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching ANOVA Tukey HSD, echo = FALSE}
+## Tukey groups
+mismatch.groups <- HSD.test(mismatch.aov, trt = "ecoregion", group = TRUE)
+
+## Export the Tukey group table
+kable(
+	mismatch.groups$groups,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Tukey groups assigned to ecoregions differing in habitat matching.",
+	col.names = c("Mean Habitat Matching", "Grouping")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+
+\newpage
+## Vectors of Habitat Matching & Mismatch
+
+Vector components of habitat matching and mismatch were compared by ecoregion to determine if components vary spatially (Addendum to **Question 1**). Vector components were compared by ecoregion using a one-way ANOVA with Type III sums-of-squares [`Anova()` in the `car` package]; post-hoc Tukey's HSD tests [`HSD.test()` in the `agricolae` package] were used to identify differences among groups. ANOVA assumptions were inspected graphically using `check_model()` in the `performance` package. Effect sizes for the ANOVAs were calculated as $\eta^2$ using `eta_squared()` in the `effectsize` package.
+
+
+\newpage
+### T~max~ Vector Component ANOVA
+
+```{r Tmax DisEQ Vector ANOVA, echo = TRUE}
+Tmax.DisEQ.vector.aov <- lm(Tmax.direction ~ ecoregion, data = final.DisEQ.data)
+```
+
+\vspace{4pt}
+
+```{r Tmax DisEQ Vector ANOVA Diagnostic Plots, fig.cap = "Diagnostic plots for the Tmax DisEQ Vector ANOVA."}
+check_model(Tmax.DisEQ.vector.aov)
+```
+
+\vspace{4pt}
+
+```{r Tmax DisEQ Vector ANOVA Results, echo = FALSE}
+kable(
+	tidy(Anova(Tmax.DisEQ.vector.aov, type = "III")),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the Tmax DisEQ Vector ANOVA.",
+	col.names = c("Term", "Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Effect Size-Tmax DisEQ Vector ANOVA, echo = FALSE}
+kable(
+	eta_squared(Tmax.DisEQ.vector.aov, partial = FALSE, ci = 0.95),
+	booktabs = TRUE, 
+	caption = "Effect size for ecoregion in the Tmax DisEQ Vector ANOVA.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Tmax DisEQ Vector ANOVA Tukey HSD, echo = FALSE}
+## Tukey groups
+Tmax.DisEQ.vector.groups <- HSD.test(Tmax.DisEQ.vector.aov, trt = "ecoregion", group = TRUE)
+
+## Export the Tukey group table
+kable(
+	Tmax.DisEQ.vector.groups$groups,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Tukey groups assigned to ecoregions differing in Tmax DisEQ vector components.",
+	col.names = c("Mean Tmax", "Grouping")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+### T~min~ Vector Component ANOVA
+
+```{r Tmin DisEQ Vector ANOVA, echo = TRUE}
+Tmin.DisEQ.vector.aov <- lm(Tmin.direction ~ ecoregion, data = final.DisEQ.data)
+```
+
+\vspace{4pt}
+
+```{r Tmin DisEQ Vector ANOVA Diagnostic Plots, fig.cap = "Diagnostic plots for the Tmin DisEQ Vector ANOVA."}
+check_model(Tmin.DisEQ.vector.aov)
+```
+
+\vspace{4pt}
+
+```{r Tmin DisEQ Vector ANOVA Results, echo = FALSE}
+kable(
+	tidy(Anova(Tmin.DisEQ.vector.aov, type = "III")),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the Tmin DisEQ Vector ANOVA.",
+	col.names = c("Term", "Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Effect Size-Tmin DisEQ Vector ANOVA, echo = FALSE}
+kable(
+	eta_squared(Tmin.DisEQ.vector.aov, partial = FALSE, ci = 0.95),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Effect size for ecoregion in the Tmin DisEQ Vector ANOVA.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Tmin DisEQ Vector ANOVA Tukey HSD, echo = FALSE}
+## Tukey groups
+Tmin.DisEQ.vector.groups <- HSD.test(Tmin.DisEQ.vector.aov, trt = "ecoregion", group = TRUE)
+
+## Export the Tukey group table
+kable(
+	Tmin.DisEQ.vector.groups$groups,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Tukey groups assigned to ecoregions differing in Tmin DisEQ vector components.",
+	col.names = c("Mean Tmin", "Grouping")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+### pH Vector Component ANOVA
+
+```{r pH DisEQ Vector ANOVA, echo = TRUE}
+pH.DisEQ.vector.aov <- lm(pH.direction ~ ecoregion, data = final.DisEQ.data)
+```
+
+\vspace{4pt}
+
+```{r pH DisEQ Vector ANOVA Diagnostic Plots, fig.cap = "Diagnostic plots for the pH DisEQ Vector ANOVA."}
+check_model(pH.DisEQ.vector.aov)
+```
+
+\vspace{4pt}
+
+```{r pH DisEQ Vector ANOVA Results, echo = FALSE}
+kable(
+	tidy(Anova(pH.DisEQ.vector.aov, type = "III")),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the pH DisEQ Vector ANOVA.",
+	col.names = c("Term", "Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Effect Size-pH DisEQ Vector ANOVA, echo = FALSE}
+kable(
+	eta_squared(pH.DisEQ.vector.aov, partial = FALSE, ci = 0.95),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Effect size for ecoregion in the pH DisEQ Vector ANOVA.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r pH DisEQ Vector ANOVA Tukey HSD, echo = FALSE}
+## Tukey groups
+pH.DisEQ.vector.groups <- HSD.test(pH.DisEQ.vector.aov, trt = "ecoregion", group = TRUE)
+
+## Export the Tukey group table
+kable(
+	pH.DisEQ.vector.groups$groups,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Tukey groups assigned to ecoregions differing in pH DisEQ vector components.",
+	col.names = c("Mean pH", "Grouping")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+### Conductivity Vector Component ANOVA
+
+```{r Conductivity DisEQ Vector ANOVA, echo = TRUE}
+cond.DisEQ.vector.aov <- lm(cond.direction ~ ecoregion, data = final.DisEQ.data)
+```
+
+\vspace{4pt}
+
+```{r Conductivity DisEQ Vector ANOVA Diagnostic Plots, fig.cap = "Diagnostic plots for the Conductivity DisEQ Vector ANOVA."}
+check_model(cond.DisEQ.vector.aov)
+```
+
+\vspace{4pt}
+
+```{r Conductivity DisEQ Vector ANOVA Results, echo = FALSE}
+kable(
+	tidy(Anova(cond.DisEQ.vector.aov, type = "III")),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the Conductivity DisEQ Vector ANOVA.",
+	col.names = c("Term", "Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Effect Size-Conductivity DisEQ Vector ANOVA, echo = FALSE}
+kable(
+	eta_squared(cond.DisEQ.vector.aov, partial = FALSE, ci = 0.95),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Effect size for ecoregion in the Conductivity DisEQ Vector ANOVA.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Conductivity DisEQ Vector ANOVA Tukey HSD, echo = FALSE}
+## Tukey groups
+cond.DisEQ.vector.groups <- HSD.test(cond.DisEQ.vector.aov, trt = "ecoregion", group = TRUE)
+
+## Export the Tukey group table
+kable(
+	cond.DisEQ.vector.groups$groups,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Tukey groups assigned to ecoregions differing in Conductivity DisEQ vector components.",
+	col.names = c("Mean Conductivity", "Grouping")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+## Response to Q1: How do filtering and habitat matching vary across ecoregions?
+
+Environmental filtering varied strongly by ecoregion ($F_{8, 1069} = 1517.496, P < 0.001, \eta^2 = 0.919$). Environmental filtering (lower $\delta$) was strongest in the NPL ecoregion, followed by the SAP and UMW ecoregions, while environmental permissiveness (higher $\delta$) was highest in the WMT ecoregion followed by the NAP. Habitat matching also varied by ecoregion, but this effect was weak ($F_{8, 1069} = 2.277, P = 0.020, \eta^2 = 0.017$); post-hoc Tukey’s HSD did not identify any pairwise differences between ecoregions. Qualitatively, habitat matching (higher $\lambda$) was stronger in the WMT, SPL, and NPL ecoregions while niche matching (lower $\lambda$) was stronger in the UMW and XER ecoregions.
+
+```{r Filtering and Habitat Matching Figure, echo = FALSE, fig.cap = "Plots of environmental filtering and habitat matching by ecoregion."}
+knitr::include_graphics(paste0(getwd(), "/figures/Figure_2-filtering_mismatch_ANOVAs-final.jpg"))
+```
+
+\newpage
+Vector components varied by ecoregion in response to habitat matching and mismatch.T~max~ vector components varied by ecoregion ($F_{8, 1069} = 2.897, P = 0.003, \eta^2 = 0.021$), but post-hoc tests did not identify any pairwise differences. Generally, T~max~ pushed the CPL and NAP ecoregions into mismatch and the XER, SPL, and NPL ecoregions into habitat matching. T~min~ vector components also varied by ecoregion ($F_{8, 1069} = 3.555, P < 0.001, \eta^2 = 0.026$), driving mismatch in the TPL and habitat matching in the NPL. pH vector components also varied by ecoregion ($F_{8, 1069} = 3.602, P < 0.001, \eta^2 = 0.026$), driving mismatch in the WMT and habitat matching in the NPL. There was no evidence that conductivity vector components varied by ecoregion ($F_{8, 1069} = 0.920, P = 0.499, \eta^2 = 0.007$)
+
+```{r Habitat Matching and Mismatch Vector Components Figure, echo = FALSE, fig.cap = "Plots of habitat matching and mismatch vector components by ecoregion."}
+knitr::include_graphics(paste0(getwd(), "/figures/Figure_S1-vector_components.jpg"))
+```
+
+
+
+\newpage
+# Q2: How does functional diversity vary across ecoregions?
+
+## Trait Diversity
+
+Trait diversity was quantified as functional richness (FRic), functional eveness (FEve), functional divergence (FDiv), and functional dispersion (FDis) for each community across all 9 ecoregions.
+
+Definitions:
+
++ FRic = portion of trait space occupied by the community
++ FEve = measures the regularity of the distribution of traits within occupied trait space using a minimum spanning tree
++ FDiv = proportion of trait space occupied by extreme trait values
++ FDis =  weighted mean distance of individual taxa in the community to the centroid of all species in multidimensional trait space, and simultaneously measures trait dissimilarity and evenness within the community.
+
+```{r Set Community Matrix, echo = TRUE}
+community.matrix <- final.data[rowSums(final.data[, 67:142]) > 0, 67:142]
+```
+
+
+```{r Recode Trait Table, echo = TRUE}
+## Set a trait table for re-coded values
+trait.table.recoded <- trait.table.categorical
+
+## Set character mappings
+dispersal.mapping <- c("low" = 0, "high" = 1)
+flying.mapping    <- c("none" = 0, "weak" = 1, "strong" = 2)
+size.mapping      <- c("small" = 0, "medium" = 1, "large" = 2)
+rheophily.mapping <- c("depositional" = 0, "depositional_erosional" = 1, "erosional" = 2)
+thermal.mapping   <- c("cold" = 0, "cool_warm" = 1, "warm" = 2)
+FFG.mapping       <- c("CG" = 0, "CF" = 1, "HB" = 2, "PR" = 3)
+tolerance.mapping <- c("sensitive" = 0, "medium" = 1, "tolerant" = 2)
+
+## Recode categorical traits to quasi-ordinal
+trait.table.recoded$dispersal          <- dispersal.mapping[trait.table.recoded$dispersal]
+trait.table.recoded$flying.strength    <- flying.mapping[trait.table.recoded$flying.strength]
+trait.table.recoded$size               <- size.mapping[trait.table.recoded$size]
+trait.table.recoded$rheophily          <- rheophily.mapping[trait.table.recoded$rheophily]
+trait.table.recoded$thermal.preference <- thermal.mapping[trait.table.recoded$thermal.preference]
+trait.table.recoded$FFG                <- FFG.mapping[trait.table.recoded$FFG]
+trait.table.recoded$tolerance          <- tolerance.mapping[trait.table.recoded$tolerance]
+```
+
+```{r Quantify Trait Diversity, echo = TRUE, eval = FALSE}
+## Calculate functional trait diversity metrics
+trait.diversity <- data.frame(dbFD(
+	x = trait.table.recoded,
+	a = community.matrix, 
+	m = "min",
+	stand.FRic = TRUE,
+	calc.CWM = FALSE,
+	corr = "none",
+	messages = FALSE
+	)
+)
+
+## Add site UID to merge the trait diversity with the final data
+trait.diversity$UID <- final.data[rowSums(final.data[, 67:142]) > 0, 1]
+
+## Merge into final dataframe
+final.DisEQ.data <- DisEQ.analysis.results %>%
+	full_join(trait.diversity, by = "UID")
+```
+
+
+\newpage
+## Trait Diversity ANOVAs
+
+Trait diversity was compared by ecoregion to determine if trait diversity varied among ecoregions (**Question 2**). Each measure of trait diversity (functional richness = FRic, functional evenness = FEve, functional divergence = FDiv, and functional dispersion = FDis) was compared using the same ANOVA workflow for the filtering and habitat matching ANOVAs described above. Briefly,a one-way ANOVA with Type III sums-of-squares was performed on each trait diversity metric, with post-hoc Tukey's HSD tests to identify differences among groups. Assumptions were checked using `check_model` in the `performance` package, with effect sizes calculated as $\eta^2$.
+
+We calculated each trait diversity measure using the `dbFD()` function in the `FD` package.
+
+References for functional traits and trait diversity metrics:
+
+> McGill, B., et al. 2006. Rebuilding community ecology from functional traits. Trends in Ecology and Evolution 21: 178-185.
+
+> Villéger, S., et al. 2008. New multidimensional functional diversity indicies for a multifaceted framework in functional ecology. Ecology 89: 2290-2301.
+
+> Laliberté, E., and P. Legendre. 2010. A distance-based framework for measuring functional diversity from multiple traits. Ecology 91: 299-305.
+
+
+\newpage
+### Functional Richness (FRic)
+
+```{r FRic ANOVA, echo = TRUE}
+FRic.aov <- lm(FRic ~ ecoregion, data = final.DisEQ.data)
+```
+
+\vspace{4pt}
+
+```{r FRic ANOVA Diagnostic Plot, fig.cap = "Diagnostic plots for the FRic ANOVA."}
+check_model(FRic.aov)
+```
+
+\vspace{4pt}
+
+```{r FRic Filtering ANOVA Results, echo = FALSE}
+kable(
+	tidy(Anova(FRic.aov, type = "III")),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the FRic ANOVA.",
+	col.names = c("Term", "Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Effect Size-FRic ANOVA, echo = FALSE}
+kable(
+	eta_squared(FRic.aov, partial = FALSE, ci = 0.95),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Effect size for ecoregion in the FRic ANOVA.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r FRic ANOVA Tukey HSD, echo = FALSE}
+## Tukey groups
+FRic.groups <- HSD.test(FRic.aov, trt = "ecoregion", group = TRUE)
+
+## Export the Tukey group table
+kable(
+	FRic.groups$groups,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Tukey groups assigned to ecoregions differing in FRic.",
+	col.names = c("Mean FRic", "Grouping")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+### Functional Evenness (FEve)
+
+```{r FEve ANOVA, echo = TRUE}
+FEve.aov <- lm(FEve ~ ecoregion, data = final.DisEQ.data)
+```
+
+\vspace{4pt}
+
+```{r FEve ANOVA Diagnostic Plots, fig.cap = "Diagnostic plots for the FEve ANOVA."}
+check_model(FEve.aov)
+```
+
+\vspace{4pt}
+
+```{r FEve Filtering ANOVA Results, echo = FALSE}
+kable(
+	tidy(Anova(FEve.aov, type = "III")),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the FEve ANOVA.",
+	col.names = c("Term", "Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Effect Size-FEve ANOVA, echo = FALSE}
+kable(
+	eta_squared(FEve.aov, partial = FALSE, ci = 0.95),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Effect size for ecoregion in the FEve ANOVA.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r FEve ANOVA Tukey HSD, echo = FALSE}
+## Tukey groups
+FEve.groups <- HSD.test(FEve.aov, trt = "ecoregion", group = TRUE)
+
+## Export the Tukey group table
+kable(
+	FEve.groups$groups,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Tukey groups assigned to ecoregions differing in FEve.",
+	col.names = c("Mean FEve", "Grouping")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+### Functional Divergence (FDiv)
+
+```{r FDiv ANOVA, echo = TRUE}
+FDiv.aov <- lm(FDiv ~ ecoregion, data = final.DisEQ.data)
+```
+
+\vspace{4pt}
+
+```{r FDiv ANOVA Diagnostic Plots, fig.cap = "Diagnostic plots for the FDiv ANOVA."}
+check_model(FDiv.aov)
+```
+
+\vspace{4pt}
+
+```{r FDiv Filtering ANOVA Results, echo = FALSE}
+kable(
+	tidy(Anova(FDiv.aov, type = "III")),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the FDiv ANOVA.",
+	col.names = c("Term", "Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Effect Size-FDiv ANOVA, echo = FALSE}
+kable(
+	eta_squared(FDiv.aov, partial = FALSE, ci = 0.95),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Effect size for ecoregion in the FDiv ANOVA.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r FDiv ANOVA Tukey HSD, echo = FALSE}
+## Tukey groups
+FDiv.groups <- HSD.test(FDiv.aov, trt = "ecoregion", group = TRUE)
+
+## Export the Tukey group table
+kable(
+	FDiv.groups$groups,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Tukey groups assigned to ecoregions differing in FDiv.",
+	col.names = c("Mean FDiv", "Grouping")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+### Functional Dispersion (FDis)
+
+```{r FDis ANOVA, echo = TRUE}
+FDis.aov <- lm(FDis ~ ecoregion, data = final.DisEQ.data)
+```
+
+\vspace{4pt}
+
+```{r FDis ANOVA Diagnostic Plots, fig.cap = "Diagnostic plots for the FDis ANOVA."}
+check_model(FDis.aov)
+```
+
+\vspace{4pt}
+
+```{r FDis Filtering ANOVA Results, echo = FALSE}
+kable(
+	tidy(Anova(FDis.aov, type = "III")),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the FDis ANOVA.",
+	col.names = c("Term", "Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Effect Size-FDis ANOVA, echo = FALSE}
+kable(
+	eta_squared(FDis.aov, partial = FALSE, ci = 0.95),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Effect size for ecoregion in the FDis ANOVA.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r FDis ANOVA Tukey HSD, echo = FALSE}
+## Tukey groups
+FDis.groups <- HSD.test(FDis.aov, trt = "ecoregion", group = TRUE)
+
+## Export the Tukey group table
+kable(
+	FDis.groups$groups,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Tukey groups assigned to ecoregions differing in FDis.",
+	col.names = c("Mean FDis", "Grouping")
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+## Response to Q2: How does functional diversity vary across ecoregions?
+
+All four measures of functional trait diversity varied by ecoregion. Functional richness was highest in the SAP and lowest in the NPL, SPL, and XER ecoregions ($F_{8, 1069} = 14.621, P < 0.001, \eta^2 = 0.103$), while FEve was highest in the SPL and lowest in the NAP, UMW, and XER ecoregions ($F_{8, 1069} = 8.089, P < 0.001, \eta^2 = 0.059$). Functional divergence was highest in the CPL and lowest in the XER ecoregions ($F_{8, 1069 = 6.667}, P < 0.001, \eta^2 = 0.049$), and FDis was highest in the SAP and lowest in the XER ecoregions ($F_{8, 1069 = 8.286}, P < 0.001, \eta^2 = 0.059$).
+
+```{r Trait Diversity Figure, echo = FALSE, fig.cap = "Plots of functional trait diversity by ecoregion."}
+knitr::include_graphics(paste0(getwd(), "/figures/Figure_3-trait_diversity-final.jpg"))
+```
+
+
+
+
+\newpage
+# Trait Abundance Calculation
+
+```{r Community Matrix Management, echo = TRUE}
+## Subset taxa for each ecoregion (include UID for joining dataframes)
+CPL.taxa <- CPL.data %>%
+	select(c(1, 67:142))
+NAP.taxa <- NAP.data %>%
+	select(c(1, 67:142))
+NPL.taxa <- NPL.data %>%
+	select(c(1, 67:142))
+SAP.taxa <- SAP.data %>%
+	select(c(1, 67:142))
+SPL.taxa <- SPL.data %>%
+	select(c(1, 67:142))
+TPL.taxa <- TPL.data %>%
+	select(c(1, 67:142))
+UMW.taxa <- UMW.data %>%
+	select(c(1, 67:142))
+WMT.taxa <- WMT.data %>%
+	select(c(1, 67:142))
+XER.taxa <- XER.data %>%
+	select(c(1, 67:142))
+```
+
+\newpage
+```{r Trait-by-Site Abundance Function, echo = TRUE}
+## Function to calculate trait abundances for each site
+trait_by_site_abundance <- function(j) {
+	## Load required packages
+	require(dplyr)
+	
+	## Set trait matrix
+	trait.matrix <- trait.table.binary
+	
+	## Sequentially calculate abundances for each trait for all sites in the supplied taxa matrix
+	dispersal.low          <- j * trait.matrix[, 2] [match(names(j), trait.matrix$taxon)][col(j)]
+	dispersal.high         <- j * trait.matrix[, 3] [match(names(j), trait.matrix$taxon)][col(j)]
+	flying.none            <- j * trait.matrix[, 4] [match(names(j), trait.matrix$taxon)][col(j)]
+	flying.weak            <- j * trait.matrix[, 5] [match(names(j), trait.matrix$taxon)][col(j)]
+	flying.strong          <- j * trait.matrix[, 6] [match(names(j), trait.matrix$taxon)][col(j)]
+	size.small             <- j * trait.matrix[, 7] [match(names(j), trait.matrix$taxon)][col(j)]
+	size.medium            <- j * trait.matrix[, 8] [match(names(j), trait.matrix$taxon)][col(j)]
+	size.large             <- j * trait.matrix[, 9] [match(names(j), trait.matrix$taxon)][col(j)]
+	depositional           <- j * trait.matrix[, 10] [match(names(j), trait.matrix$taxon)][col(j)]
+	depositional.erosional <- j * trait.matrix[, 11] [match(names(j), trait.matrix$taxon)][col(j)]
+	erosional              <- j * trait.matrix[, 12] [match(names(j), trait.matrix$taxon)][col(j)]
+	cold                   <- j * trait.matrix[, 13] [match(names(j), trait.matrix$taxon)][col(j)]
+	cool.warm              <- j * trait.matrix[, 14] [match(names(j), trait.matrix$taxon)][col(j)]
+	warm                   <- j * trait.matrix[, 15] [match(names(j), trait.matrix$taxon)][col(j)]
+	CG                     <- j * trait.matrix[, 16] [match(names(j), trait.matrix$taxon)][col(j)]
+	CF                     <- j * trait.matrix[, 17] [match(names(j), trait.matrix$taxon)][col(j)]
+	HB                     <- j * trait.matrix[, 18] [match(names(j), trait.matrix$taxon)][col(j)]
+	PR                     <- j * trait.matrix[, 19] [match(names(j), trait.matrix$taxon)][col(j)]
+	sensitive              <- j * trait.matrix[, 20] [match(names(j), trait.matrix$taxon)][col(j)]
+	intermediate           <- j * trait.matrix[, 21] [match(names(j), trait.matrix$taxon)][col(j)]
+	tolerant               <- j * trait.matrix[, 22] [match(names(j), trait.matrix$taxon)][col(j)]
+	
+	## Set list of traits; remove UID column
+	trait.list <- list(
+		dispersal.low[, -1], dispersal.high[, -1], flying.none[, -1], flying.weak[, -1], 
+		flying.strong[, -1], size.small[, -1], size.medium[, -1], size.large[, -1], 
+		depositional[, -1], depositional.erosional[, -1], erosional[, -1], 
+		cold[, -1], cool.warm[, -1], warm[, -1], CG[, -1], CF[, -1], HB[, -1], 
+		PR[, -1], sensitive[, -1],	intermediate[, -1], tolerant[, -1]
+	)
+	
+	
+	## Sum trait abundances by site
+	trait.abundances.bin.1 <- sapply(trait.list, FUN = rowSums, USE.NAMES = TRUE) %>%
+		as_tibble()
+
+	## Set UID vector
+	UID.vector <- j[, 1] %>%
+		as_tibble()
+
+	## Bind UID and trait abundances
+	trait.abundances.bin.2 <- bind_cols(UID.vector, trait.abundances.bin.1) 
+	
+	## Rename trait columns
+	colnames(trait.abundances.bin.2)[2:22] <- colnames(trait.matrix)[2:22]
+	
+	## Rename UID column
+	colnames(trait.abundances.bin.2)[1] <- "UID"
+	
+	## Set final trait abundance tibble
+	trait.abundances <- trait.abundances.bin.2 %>%
+		as_tibble()
+}
+```
+
+
+\newpage
+```{r Trait Abundance Calcuation, echo = TRUE}
+## List of taxa matrices for each ecoregion
+taxa.matrix.list <- list(
+	CPL.taxa, NAP.taxa, NPL.taxa,
+	SAP.taxa, SPL.taxa, TPL.taxa,
+	UMW.taxa, WMT.taxa, XER.taxa
+)
+
+## Calculate trait abundances for all sites
+trait.abundance.list <- lapply(
+	X = taxa.matrix.list,
+	FUN = trait_by_site_abundance
+	)
+
+## Rename each dataframe within the list
+names(trait.abundance.list) <- c(
+	"CPL.trait.abundance.data", "NAP.trait.abundance.data", "NPL.trait.abundance.data",
+	"SAP.trait.abundance.data", "SPL.trait.abundance.data", "TPL.trait.abundance.data",
+	"UMW.trait.abundance.data", "WMT.trait.abundance.data", "XER.trait.abundance.data"
+)
+
+## Export trait abundance data
+list2env(trait.abundance.list, envir = .GlobalEnv)
+```
+
+
+
+
+\newpage
+# Q3: Which functional traits are linked to filtering and habitat matching?
+
+## DisEQ-by-Traits Relationships
+
+We used boosted regression trees (BRTs) to identify which functional traits were the best predictor of filtering and habitat matching. We fitted one set of BRTs with filtering as the response and one set of BRTs with habitat matching as the response, functional trait abundances were fitted as the predictor variables for both DisEQ-by-Trait BRTs. Our goal was to identify which functional traits were useful predictors of filtering and habitat matching, with separate BRTs for each ecoregion to allow for the relative influence of functional traits to vary by ecoregion.
+
+DisEQ-by-Trait BRTs were: (1) fitted to a Gaussian error distribution, (2) fitted to 10,000 trees, (3) had a learning rate of 0.0001, (4) a minimum of 5 observations per terminal node, (5) had an interaction depth of 4, (6) had a bagging fraction of 50%, and (7) used ten-fold cross validation.
+
+We fitted all BRTs using the `gbm()` function in the `gbm` package, with code parallelized using the `snow` package.
+
+List of functional traits and levels:
+
++ Dispersal ability = low, high
++ Flying strength = none, weak, strong
++ Body size = small, medium, large
++ Rheophilic preference = depositional, depositional-erosional, erosional
++ Thermal preference = cold water, cool-warm water, warm water
++ Tolerance = sensitive, intermediate, tolerant
++ Functional feeding group = CG, CF, HB, PR
+
+Note: Shredders were not evaluated as they comprised less than 1% of all taxa
+
+Traits were interpreted in three categories
+
++ Dispersal = dispersal ability, flying strength, and body size
++ Habitat = rheophilic preference, thermal preference, and tolerance
++ Ecology = functional feeding group
+
+
+References for BRTs:
+
+> De'ath, G. 2007. Boosted trees for ecological modeling and prediction. Ecology 88: 243-251.
+
+> Elith, J., et al. 2008. A working guide to boosted regression trees. Journal of Animal Ecology 77: 802-813.
+
+
+\newpage
+```{r DisEQ-by-Trait Data Management, echo = TRUE}
+## Subset trait abundance and DisEQ data by ecoregion
+CPL.trait.DisEQ.data <- filter(final.DisEQ.data, ecoregion == "CPL") %>%
+	select(c(1:2, 4)) %>%
+	left_join(CPL.trait.abundance.data, by = "UID")
+NAP.trait.DisEQ.data <- filter(final.DisEQ.data, ecoregion == "NAP") %>%
+	select(c(1:2, 4)) %>%
+	left_join(NAP.trait.abundance.data, by = "UID")
+NPL.trait.DisEQ.data <- filter(final.DisEQ.data, ecoregion == "NPL") %>%
+	select(c(1:2, 4)) %>%
+	left_join(NPL.trait.abundance.data, by = "UID")
+SAP.trait.DisEQ.data <- filter(final.DisEQ.data, ecoregion == "SAP") %>%
+	select(c(1:2, 4)) %>%
+	left_join(SAP.trait.abundance.data, by = "UID")
+SPL.trait.DisEQ.data <- filter(final.DisEQ.data, ecoregion == "SPL") %>%
+	select(c(1:2, 4)) %>%
+	left_join(SPL.trait.abundance.data, by = "UID")
+TPL.trait.DisEQ.data <- filter(final.DisEQ.data, ecoregion == "TPL") %>%
+	select(c(1:2, 4)) %>%
+	left_join(TPL.trait.abundance.data, by = "UID")
+UMW.trait.DisEQ.data <- filter(final.DisEQ.data, ecoregion == "UMW") %>%
+	select(c(1:2, 4)) %>%
+	left_join(UMW.trait.abundance.data, by = "UID")
+WMT.trait.DisEQ.data <- filter(final.DisEQ.data, ecoregion == "WMT") %>%
+	select(c(1:2, 4)) %>%
+	left_join(WMT.trait.abundance.data, by = "UID")
+XER.trait.DisEQ.data <- filter(final.DisEQ.data, ecoregion == "XER") %>%
+	select(c(1:2, 4)) %>%
+	left_join(XER.trait.abundance.data, by = "UID")
+```
+
+\newpage
+## Filtering-by-Traits BRTs
+
+```{r Filtering-by-Trait BRT, echo = TRUE, eval = FALSE}
+## List of data for boosted regression analyses
+filtering.by.trait.BRT.data.list <- list(
+	CPL.filtering.trait.DisEQ.data <- CPL.trait.DisEQ.data %>% select(2, 4:24),
+	NAP.filtering.trait.DisEQ.data <- NAP.trait.DisEQ.data %>% select(2, 4:24),
+	NPL.filtering.trait.DisEQ.data <- NPL.trait.DisEQ.data %>% select(2, 4:24),
+	SAP.filtering.trait.DisEQ.data <- SAP.trait.DisEQ.data %>% select(2, 4:24),
+	SPL.filtering.trait.DisEQ.data <- SPL.trait.DisEQ.data %>% select(2, 4:24),
+	TPL.filtering.trait.DisEQ.data <- TPL.trait.DisEQ.data %>% select(2, 4:24),
+	UMW.filtering.trait.DisEQ.data <- UMW.trait.DisEQ.data %>% select(2, 4:24),
+	WMT.filtering.trait.DisEQ.data <- WMT.trait.DisEQ.data %>% select(2, 4:24),
+	XER.filtering.trait.DisEQ.data <- XER.trait.DisEQ.data %>% select(2, 4:24)
+	)
+
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the analysis for each ecoregion
+filtering.by.trait.BRT.list <- parLapply(
+	cluster, 
+	filtering.by.trait.BRT.data.list, 
+	fun =  function(j) {
+  	require(gbm)
+ 	
+ 	  ## Fit the BRT
+ 	  filtering.by.trait.BRT <- gbm(
+ 	  	j[, 1] ~ .,
+ 	  	distribution = "gaussian",
+ 	  	data = j[, -1],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Filtering-by-Trait BRT Results, include = FALSE, eval = FALSE}
+## Get results for each BRT
+filtering.by.trait.BRT.results <- lapply(
+	filtering.by.trait.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+		
+		## Assign predictor types
+		BRT.summary.final <- transform(
+    BRT.summary,
+    predictor.type = if_else(BRT.summary$var == "dispersal.low" |
+                             BRT.summary$var == "dispersal.high" |
+                             BRT.summary$var == "flying.strength.none" |
+                             BRT.summary$var == "flying.strength.weak" |
+                             BRT.summary$var == "flying.strength.strong" |
+     												 BRT.summary$var == "size.small" |
+     												 BRT.summary$var == "size.medium" |
+                             BRT.summary$var == "size.large", "Dispersal",
+    								 if_else(BRT.summary$var == "depositional" |
+                             BRT.summary$var == "depositional.erosional" |
+                             BRT.summary$var == "erosional" |
+                             BRT.summary$var == "cold" |
+                             BRT.summary$var == "cool.warm" |
+                             BRT.summary$var == "warm" |
+                             BRT.summary$var == "sensitive" |
+                             BRT.summary$var == "medium" |
+                             BRT.summary$var == "tolerant", "Habitat",
+                     if_else(BRT.summary$var == "CG" |
+                             BRT.summary$var == "CF" |
+                             BRT.summary$var == "HB" |
+                             BRT.summary$var == "PR", "Ecology",
+                     			   "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+filtering.by.trait.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 21)
+```
+
+
+\newpage
+## Habitat Matching-by-Traits BRTs
+
+```{r Habitat Matching-by-Trait BRT, echo = TRUE, eval = FALSE}
+## List of data for boosted regression analyses
+mismatch.by.trait.BRT.data.list <- list(
+	CPL.mismatch.trait.DisEQ.data <- CPL.trait.DisEQ.data %>% select(3, 4:24),
+	NAP.mismatch.trait.DisEQ.data <- NAP.trait.DisEQ.data %>% select(3, 4:24),
+	NPL.mismatch.trait.DisEQ.data <- NPL.trait.DisEQ.data %>% select(3, 4:24),
+	SAP.mismatch.trait.DisEQ.data <- SAP.trait.DisEQ.data %>% select(3, 4:24),
+	SPL.mismatch.trait.DisEQ.data <- SPL.trait.DisEQ.data %>% select(3, 4:24),
+	TPL.mismatch.trait.DisEQ.data <- TPL.trait.DisEQ.data %>% select(3, 4:24),
+	UMW.mismatch.trait.DisEQ.data <- UMW.trait.DisEQ.data %>% select(3, 4:24),
+	WMT.mismatch.trait.DisEQ.data <- WMT.trait.DisEQ.data %>% select(3, 4:24),
+	XER.mismatch.trait.DisEQ.data <- XER.trait.DisEQ.data %>% select(3, 4:24)
+	)
+
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the analysis for the CUS and each ecoregion
+mismatch.by.trait.BRT.list <- parLapply(
+	cluster, 
+	mismatch.by.trait.BRT.data.list, 
+	fun =  function(j) {
+  	require(gbm)
+ 	
+ 	  ## Fit the BRT
+ 	  mismatch.by.trait.BRT <- gbm(
+ 	  	j[, 1] ~ .,
+ 	  	distribution = "gaussian",
+ 	  	data = j[, -1],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Habitat Matching-by-Trait BRT Results, include = FALSE, eval = FALSE}
+## Get results for each BRT
+mismatch.by.trait.BRT.results <- lapply(
+	mismatch.by.trait.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+		
+		## Assign predictor types
+		BRT.summary.final <- transform(
+    BRT.summary,
+    predictor.type = if_else(BRT.summary$var == "dispersal.low" |
+                             BRT.summary$var == "dispersal.high" |
+                             BRT.summary$var == "flying.strength.none" |
+                             BRT.summary$var == "flying.strength.weak" |
+                             BRT.summary$var == "flying.strength.strong" |
+     												 BRT.summary$var == "size.small" |
+     												 BRT.summary$var == "size.medium" |
+                             BRT.summary$var == "size.large", "Dispersal",
+    								 if_else(BRT.summary$var == "depositional" |
+                             BRT.summary$var == "depositional.erosional" |
+                             BRT.summary$var == "erosional" |
+                             BRT.summary$var == "cold" |
+                             BRT.summary$var == "cool.warm" |
+                             BRT.summary$var == "warm" |
+                             BRT.summary$var == "sensitive" |
+                             BRT.summary$var == "medium" |
+                             BRT.summary$var == "tolerant", "Habitat",
+                     if_else(BRT.summary$var == "CG" |
+                             BRT.summary$var == "CF" |
+                             BRT.summary$var == "HB" |
+                             BRT.summary$var == "PR", "Ecology",
+                     			   "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+mismatch.by.trait.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 21)
+```
+
+
+
+\newpage
+## DisEQ-by-Trait Diversity ANCOVAs
+
+We analyzed how the effects of functional trait diversity covary with ecoregion to affect environmental filtering and habitat matching using ANCOVAs. Four separate ANCOVAs were fitted for each response variable (i.e., environmental filtering and habitat matching). Model fits were assessed using `check_model()` in the `performance` package. Influence of predictors was estimated with Type III sums-of-squares using `Ancova()` in the `car` package, and effect sizes were estimated as partial $\eta^2_P$ using the `eta_squared()` function.
+
+ANCOVAs were fitted as:
+
+$$DisEQ\ Metric = Intercept + x_i + Ecoregion + (x_i \times Ecoregion) +  e_i$$
+
+where either environmental filtering or Habitat Matching was the response, $x_i$ represented the main effect of the trait diversity metric (FRic, FEve, FDiv, or FDis), $Ecoregion$ was the main effect of ecoregion, $(x_i \times Ecoregion)$ was the interaction between trait diversity and ecoregion, and $e_i$ was the residual error associated with the model.
+
+
+\newpage
+### DisEQ-by-FRic
+
+\vspace{4pt}
+
+ANCOVAs of environmental filtering or Habitat Matching against FRic, ecoregion, and the interaction.
+
+\vspace{4pt}
+
+```{r Filtering-by-FRic ANCOVA: Model Fitting, echo = TRUE}
+filtering.FRic.ANCOVA <- lm(
+	filtering.scaled ~ FRic * ecoregion,
+	data = final.DisEQ.data
+)
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FRic ANCOVA: Diagnostic Plots, echo = FALSE, fig.cap = "Diagnostic plots for the filtering and FRic ANCOVA."}
+check_model(filtering.FRic.ANCOVA)
+```
+
+\newpage
+
+```{r Filtering-by-FRic ANCOVA: ANOVA Table, echo = FALSE}
+kable(
+	Anova(filtering.FRic.ANCOVA, type = "III"),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the environmental filtering by FRic ANCOVA.",
+	col.names = c("Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FRic ANCOVA: Calculate Eta Squared, include = FALSE}
+filtering.FRic.ANCOVA.eta.squared <- eta_squared(
+		Anova(filtering.FRic.ANCOVA, type = "III"),
+		partial = TRUE,
+		verbose = FALSE
+		)
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FRic ANCOVA: Effect Size Table, echo = FALSE}
+kable(
+	filtering.FRic.ANCOVA.eta.squared,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Table of the effect sizes in the environmental filtering by FRic ANCOVA."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\newpage
+
+```{r Habitat Matching-by-FRic ANCOVA: Model Fitting, echo = TRUE}
+mismatch.FRic.ANCOVA <- lm(
+	mismatch.scaled ~ FRic * ecoregion,
+	data = final.DisEQ.data
+)
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FRic ANCOVA: Diagnostic Plots, echo = FALSE, fig.cap = "Diagnostic plots for the habitat matching and FRic ANCOVA."}
+check_model(mismatch.FRic.ANCOVA)
+```
+
+\newpage
+
+```{r Habitat Matching-by-FRic ANCOVA: ANOVA Table, echo = FALSE}
+kable(
+	Anova(mismatch.FRic.ANCOVA, type = "III"),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the habitat matching by FRic ANCOVA.",
+	col.names = c("Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FRic ANCOVA: Calculate Eta Squared, include = FALSE}
+mismatch.FRic.ANCOVA.eta.squared <- eta_squared(
+		Anova(mismatch.FRic.ANCOVA, type = "III"),
+		partial = TRUE,
+		verbose = FALSE
+		)
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FRic ANCOVA: Effect Size Table, echo = FALSE}
+kable(
+	mismatch.FRic.ANCOVA.eta.squared,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Table of the effect sizes in the habitat matching by FRic ANCOVA."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+### DisEQ-by-FEve
+
+\vspace{4pt}
+
+ANCOVAs of environmental filtering or Habitat Matching against FEve, ecoregion, and the interaction.
+
+\vspace{4pt}
+
+```{r Filtering-by-FEve ANCOVA: Model Fitting, echo = TRUE}
+filtering.FEve.ANCOVA <- lm(
+	filtering.scaled ~ FEve * ecoregion,
+	data = final.DisEQ.data
+)
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FEve ANCOVA: Diagnostic Plots, echo = FALSE, fig.cap = "Diagnostic plots for the filtering and FEve ANCOVA."}
+check_model(filtering.FEve.ANCOVA)
+```
+
+\newpage
+
+```{r Filtering-by-FEve ANCOVA: ANOVA Table, echo = FALSE}
+kable(
+	Anova(filtering.FEve.ANCOVA, type = "III"),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the environmental filtering by FEve ANCOVA.",
+	col.names = c("Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FEve ANCOVA: Calculate Eta Squared, include = FALSE}
+filtering.FEve.ANCOVA.eta.squared <- eta_squared(
+		Anova(filtering.FEve.ANCOVA, type = "III"),
+		partial = TRUE,
+		verbose = FALSE
+		)
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FEve ANCOVA: Effect Size Table, echo = FALSE}
+kable(
+	filtering.FEve.ANCOVA.eta.squared,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Table of the effect sizes in the environmental filtering by FEve ANCOVA."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\newpage
+
+```{r Habitat Matching-by-FEve ANCOVA: Model Fitting, echo = TRUE}
+mismatch.FEve.ANCOVA <- lm(
+	mismatch.scaled ~ FEve * ecoregion,
+	data = final.DisEQ.data
+)
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FEve ANCOVA: Diagnostic Plots, echo = FALSE, fig.cap = "Diagnostic plots for the habitat matching and FEve ANCOVA."}
+check_model(mismatch.FEve.ANCOVA)
+```
+
+\newpage
+
+```{r Habitat Matching-by-FEve ANCOVA: ANOVA Table, echo = FALSE}
+kable(
+	Anova(mismatch.FEve.ANCOVA, type = "III"),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the habitat matching by FEve ANCOVA.",
+	col.names = c("Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FEve ANCOVA: Calculate Eta Squared, include = FALSE}
+mismatch.FEve.ANCOVA.eta.squared <- eta_squared(
+		Anova(mismatch.FEve.ANCOVA, type = "III"),
+		partial = TRUE,
+		verbose = FALSE
+		)
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FEve ANCOVA: Effect Size Table, echo = FALSE}
+kable(
+	mismatch.FEve.ANCOVA.eta.squared,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Table of the effect sizes in the habitat matching by FEve ANCOVA."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+### DisEQ-by-FDiv
+
+\vspace{4pt}
+
+ANCOVAs of environmental filtering or Habitat Matching against FDiv, ecoregion, and the interaction.
+
+\vspace{4pt}
+
+```{r Filtering-by-FDiv ANCOVA: Model Fitting, echo = TRUE}
+filtering.FDiv.ANCOVA <- lm(
+	filtering.scaled ~ FDiv * ecoregion,
+	data = final.DisEQ.data
+)
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FDiv ANCOVA: Diagnostic Plots, echo = FALSE, fig.cap = "Diagnostic plots for the filtering and FDiv ANCOVA."}
+check_model(filtering.FDiv.ANCOVA)
+```
+
+\newpage
+
+```{r Filtering-by-FDiv ANCOVA: ANOVA Table, echo = FALSE}
+kable(
+	Anova(filtering.FDiv.ANCOVA, type = "III"),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the environmental filtering by FDiv ANCOVA.",
+	col.names = c("Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FDiv ANCOVA: Calculate Eta Squared, include = FALSE}
+filtering.FDiv.ANCOVA.eta.squared <- eta_squared(
+		Anova(filtering.FDiv.ANCOVA, type = "III"),
+		partial = TRUE,
+		verbose = FALSE
+		)
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FDiv ANCOVA: Effect Size Table, echo = FALSE}
+kable(
+	filtering.FDiv.ANCOVA.eta.squared,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Table of the effect sizes in the environmental filtering by FDiv ANCOVA."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\newpage
+
+```{r Habitat Matching-by-FDiv ANCOVA: Model Fitting, echo = TRUE}
+mismatch.FDiv.ANCOVA <- lm(
+	mismatch.scaled ~ FDiv * ecoregion,
+	data = final.DisEQ.data
+)
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FDiv ANCOVA: Diagnostic Plots, echo = FALSE, fig.cap = "Diagnostic plots for the habitat matching and FDiv ANCOVA."}
+check_model(mismatch.FDiv.ANCOVA)
+```
+
+\newpage
+
+```{r Habitat Matching-by-FDiv ANCOVA: ANOVA Table, echo = FALSE}
+kable(
+	Anova(mismatch.FDiv.ANCOVA, type = "III"),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the habitat matching by FDiv ANCOVA.",
+	col.names = c("Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FDiv ANCOVA: Calculate Eta Squared, include = FALSE}
+mismatch.FDiv.ANCOVA.eta.squared <- eta_squared(
+		Anova(mismatch.FDiv.ANCOVA, type = "III"),
+		partial = TRUE,
+		verbose = FALSE
+		)
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FDiv ANCOVA: Effect Size Table, echo = FALSE}
+kable(
+	mismatch.FDiv.ANCOVA.eta.squared,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Table of the effect sizes in the habitat matching by FDiv ANCOVA."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+### DisEQ-by-FDis
+
+\vspace{4pt}
+
+ANCOVAs of environmental filtering or Habitat Matching against FDis, ecoregion, and the interaction.
+
+\vspace{4pt}
+
+```{r Filtering-by-FDis ANCOVA: Model Fitting, echo = TRUE}
+filtering.FDis.ANCOVA <- lm(
+	filtering.scaled ~ FDis * ecoregion,
+	data = final.DisEQ.data
+)
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FDis ANCOVA: Diagnostic Plots, echo = FALSE, fig.cap = "Diagnostic plots for the filtering and FDis ANCOVA."}
+check_model(filtering.FDis.ANCOVA)
+```
+
+\newpage
+
+```{r Filtering-by-FDis ANCOVA: ANOVA Table, echo = FALSE}
+kable(
+	Anova(filtering.FDis.ANCOVA, type = "III"),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the environmental filtering by FDis ANCOVA.",
+	col.names = c("Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FDis ANCOVA: Calculate Eta Squared, include = FALSE}
+filtering.FDis.ANCOVA.eta.squared <- eta_squared(
+		Anova(filtering.FDis.ANCOVA, type = "III"),
+		partial = TRUE,
+		verbose = FALSE
+		)
+```
+
+\vspace{4pt}
+
+```{r Filtering-by-FDis ANCOVA: Effect Size Table, echo = FALSE}
+kable(
+	filtering.FDis.ANCOVA.eta.squared,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Table of the effect sizes in the environmental filtering by FDis ANCOVA."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\newpage
+
+```{r Habitat Matching-by-FDis ANCOVA: Model Fitting, echo = TRUE}
+mismatch.FDis.ANCOVA <- lm(
+	mismatch.scaled ~ FDis * ecoregion,
+	data = final.DisEQ.data
+)
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FDis ANCOVA: Diagnostic Plots, echo = FALSE, fig.cap = "Diagnostic plots for the habitat matching and FDis ANCOVA."}
+check_model(mismatch.FDis.ANCOVA)
+```
+
+\newpage
+
+```{r Habitat Matching-by-FDis ANCOVA: ANOVA Table, echo = FALSE}
+kable(
+	Anova(mismatch.FDis.ANCOVA, type = "III"),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Summary of the habitat matching by FDis ANCOVA.",
+	col.names = c("Sums-of-Squares", "df", "F", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FDis ANCOVA: Calculate Eta Squared, include = FALSE}
+mismatch.FDis.ANCOVA.eta.squared <- eta_squared(
+		Anova(mismatch.FDis.ANCOVA, type = "III"),
+		partial = TRUE,
+		verbose = FALSE
+		)
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching-by-FDis ANCOVA: Effect Size Table, echo = FALSE}
+kable(
+	mismatch.FDis.ANCOVA.eta.squared,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Table of the effect sizes in the habitat matching by FDis ANCOVA."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+## Respone to Q3: Which functional traits are linked to filtering and habitat matching?
+
+Functional trait predictors of environmental filtering and habitat matching varied by individual trait, trait category, and ecoregion. Environmental filtering was primarily influenced by habitat traits (7/9 ecoregions), with dispersal (4/9 ecoregions) and ecology (4/9 ecoregions) traits generally of secondary and tertiary influence, respectively. In contrast to environmental filtering, habitat matching was primarily influenced by both habitat (4/9 ecoregions) and ecology (4/9 ecoregions) traits. Habitat traits were also commonly the secondary influence on habitat matching (5/9 ecoregions), with both dispersal (4/9 ecoregions) and ecology (4/9 ecoregions) traits of tertiary importance.
+
+Trait diversity was more frequently related to habitat matching than environmental filtering. Environmental filtering was only predicted by the interaction of FDiv and ecoregion ($F_{8, 1027} = 2.256,\ P = 0.022,\ \eta^2_P = 0.017$). Habitat matching was also influenced by interactions between trait diversity and ecoregion for FRic ($FRic \times Ecoregion$, $F_{8, 1015} = 7.388,\ P < 0.001,\ \eta^2_P = 0.055$), FEve ($FEve \times Ecoregion$, $F_{8, 1027} = 4.337,\ P < 0.001,\ \eta^2_P = 0.033$), and FDiv ($FDiv \times Ecoregion$, $F_{8, 1027} = 2.322,\ P = 0.018,\ \eta^2_P = 0.018$). There was no evidence for a main effect or interaction of FDis for either environmental filtering or Habitat Matching. Ecoregion consistently had the strongest effect on environmental filtering and habitat matching.
+
+\newpage
+
+```{r Filtering-by-Trait Figure, echo = FALSE, fig.cap = "Facet plot of environmental filtering-by-trait relationships."}
+knitr::include_graphics(paste0(getwd(), "/figures/Figure_4-filtering_by_traits-final.jpg"))
+```
+
+\newpage
+
+```{r Habitat Matching-by-Trait Figure, echo = FALSE, fig.cap = "Facet plot of habitat matching-by-trait relationships."}
+knitr::include_graphics(paste0(getwd(), "/figures/Figure_5-mismatch_by_traits-final.jpg"))
+```
+
+\newpage
+
+```{r Environmental Filtering by Trait Diversity Figure, echo = FALSE, fig.cap = "Regressions between environmental filtering and functional diversity."}
+knitr::include_graphics(paste0(getwd(), "/figures/Figure_S2-filtering_by_trait_diversity.jpg"))
+```
+
+\newpage
+
+```{r Habitat Matching by Trait Diversity Figure, echo = FALSE, fig.cap = "Regressions between habitat matching and functional diversity."}
+knitr::include_graphics(paste0(getwd(), "/figures/Figure_S3-mismatch_by_trait_diversity.jpg"))
+```
+
+
+
+\newpage
+# Q4: What are the environmental predictors of functional trait abundances?
+
+## Trait-by-Environment Relationships
+
+We used boosted regression trees (BRTs) to identify which environmental variables were the best predictors of trait abundances. We fitted separate sets of BRTs for each of the 22 functional trait states (list of functional traits provided below), with each set of BRTs fitted with the trait as the response and a set of environmental variables as the predictors in the Trait-by-Environment BRTs. Environmental predictors variables were divided into three classes: (1) environmental, (2) landscape, and (3) network (list of variables and respective categories provided below). Our goal was to identify which variables were useful predictors of trait abundance, and then linking the Trait-by-Environment and DisEQ-by-Trait BRTs to better understand how (Trait-by-Environment) and why (DisEQ-by-Trait) filtering and mismatch vary.
+
+Trait-by-Environment BRTs were fitted using the same parameters as the DisEQ-by-Trait BRTs: (1) fitted to a Poisson error distribution, (2) fitted to 10,000 trees, (3) had a learning rate of 0.0001, (4) a minimum of 5 observations per terminal node, (5) had an interaction depth of 4, (6) had a bagging fraction of 50%, and (7) used ten-fold cross validation.
+
+We fitted all BRTs using the `gbm()` function in the `gbm` package, with code parallelized using the `snow` package.
+
+List of functional traits and levels:
+
++ Dispersal ability = low, high
++ Flying strength = none, weak, strong
++ Body size = small, medium, large
++ Rheophilic preference = depositional, depositional-erosional, erosional
++ Thermal preference = cold water, cool-warm water, warm water
++ Tolerance = sensitive, intermediate, tolerant
++ Functional feeding group = CG, CF, HB, PR
+
+
+List of predictor variables of functional trait abundance and their respective categories:
+
++ Environmental = total.N, total.P, DOC, LWD.reach, NAT.cover, ALG.cover, AQM.cover
++ Landscape = pct.for, pct.ag, pct.urb, pct.ISC
++ Network = site.lat, site.long, basin.area, mean.annual.flow, mean.basin.elevation, range.basin.elevation, site.centrality
+
+
+### Trait-by-Environment Data Management
+
+```{r Trait Abundance & Environment Data, echo = TRUE}
+## Trait abundance data
+trait.abundance.data <- lapply(
+	X = taxa.matrix.list,
+	FUN = trait_by_site_abundance
+	) %>%
+	bind_rows()
+
+## Environment data
+environment.data <- final.DisEQ.data %>%
+	select(c(1, 12:30))
+```
+
+\newpage
+```{r Trait-by-Environment Data Management, echo = TRUE}
+## Create a list of dataframes with trait abundance and environmental 
+## predictors for each trait
+
+## Low dispersal
+low.dispersal.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, dispersal.low) %>%
+	inner_join(environment.data, by = "UID")
+
+low.dispersal.environment.data <- split(
+	low.dispersal.environment.data.bin.1, list(low.dispersal.environment.data.bin.1$ecoregion)
+	)
+
+## High dispersal
+high.dispersal.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, dispersal.high) %>%
+	inner_join(environment.data, by = "UID")
+
+high.dispersal.environment.data <- split(
+	high.dispersal.environment.data.bin.1, list(high.dispersal.environment.data.bin.1$ecoregion)
+	)
+
+## Nonflyer
+nonflyer.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, flying.strength.none) %>%
+	inner_join(environment.data, by = "UID")
+
+nonflyer.environment.data <- split(
+	nonflyer.environment.data.bin.1, list(nonflyer.environment.data.bin.1$ecoregion)
+	)
+
+## Weak flyer
+weak.flyer.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, flying.strength.weak) %>%
+	inner_join(environment.data, by = "UID")
+
+weak.flyer.environment.data <- split(
+	weak.flyer.environment.data.bin.1, list(weak.flyer.environment.data.bin.1$ecoregion)
+	)
+
+## Strong flyer
+strong.flyer.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, flying.strength.strong) %>%
+	inner_join(environment.data, by = "UID")
+
+strong.flyer.environment.data <- split(
+	strong.flyer.environment.data.bin.1, list(strong.flyer.environment.data.bin.1$ecoregion)
+	)
+
+## Small size
+small.size.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, size.small) %>%
+	inner_join(environment.data, by = "UID")
+
+small.size.environment.data <- split(
+	small.size.environment.data.bin.1, list(small.size.environment.data.bin.1$ecoregion)
+	)
+
+## Medium size
+medium.size.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, size.medium) %>%
+	inner_join(environment.data, by = "UID")
+
+medium.size.environment.data <- split(
+	medium.size.environment.data.bin.1, list(medium.size.environment.data.bin.1$ecoregion)
+	)
+
+## Large size
+large.size.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, size.large) %>%
+	inner_join(environment.data, by = "UID")
+
+large.size.environment.data <- split(
+	large.size.environment.data.bin.1, list(large.size.environment.data.bin.1$ecoregion)
+	)
+
+## Depositional
+depositional.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, depositional) %>%
+	inner_join(environment.data, by = "UID")
+
+depositional.environment.data <- split(
+	depositional.environment.data.bin.1, list(depositional.environment.data.bin.1$ecoregion)
+	)
+
+## Depositional and erosional
+depositional.erosional.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, depositional.erosional) %>%
+	inner_join(environment.data, by = "UID")
+
+depositional.erosional.environment.data <- split(
+	depositional.erosional.environment.data.bin.1, list(depositional.erosional.environment.data.bin.1$ecoregion)
+	)
+
+## Erosional
+erosional.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, erosional) %>%
+	inner_join(environment.data, by = "UID")
+
+erosional.environment.data <- split(
+	erosional.environment.data.bin.1, list(erosional.environment.data.bin.1$ecoregion)
+	)
+
+## Cold water
+cold.water.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, cold) %>%
+	inner_join(environment.data, by = "UID")
+
+cold.water.environment.data <- split(
+	cold.water.environment.data.bin.1, list(cold.water.environment.data.bin.1$ecoregion)
+	)
+
+## Cool-warm water
+cool.warm.water.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, cool.warm) %>%
+	inner_join(environment.data, by = "UID")
+
+cool.warm.water.environment.data <- split(
+	cool.warm.water.environment.data.bin.1, list(cool.warm.water.environment.data.bin.1$ecoregion)
+	)
+
+## Warm water
+warm.water.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, warm) %>%
+	inner_join(environment.data, by = "UID")
+
+warm.water.environment.data <- split(
+	warm.water.environment.data.bin.1, list(warm.water.environment.data.bin.1$ecoregion)
+	)
+
+## Sensitive tolerance
+sensitive.tolerance.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, sensitive) %>%
+	inner_join(environment.data, by = "UID")
+
+sensitive.tolerance.environment.data <- split(
+	sensitive.tolerance.environment.data.bin.1, list(sensitive.tolerance.environment.data.bin.1$ecoregion)
+	)
+
+## Intermediate tolerance
+intermediate.tolerance.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, medium) %>%
+	inner_join(environment.data, by = "UID")
+
+intermediate.tolerance.environment.data <- split(
+	intermediate.tolerance.environment.data.bin.1, list(intermediate.tolerance.environment.data.bin.1$ecoregion)
+	)
+
+## Tolerant
+tolerant.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, tolerant) %>%
+	inner_join(environment.data, by = "UID")
+
+tolerant.environment.data <- split(
+	tolerant.environment.data.bin.1, list(tolerant.environment.data.bin.1$ecoregion)
+	)
+
+## Collector-gather
+CG.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, CG) %>%
+	inner_join(environment.data, by = "UID")
+
+CG.environment.data <- split(
+	CG.environment.data.bin.1, list(CG.environment.data.bin.1$ecoregion)
+	)
+
+## Collector-filterer
+CF.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, CF) %>%
+	inner_join(environment.data, by = "UID")
+
+CF.environment.data <- split(
+	CF.environment.data.bin.1, list(CF.environment.data.bin.1$ecoregion)
+	)
+
+## Herbivore
+HB.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, HB) %>%
+	inner_join(environment.data, by = "UID")
+
+HB.environment.data <- split(
+	HB.environment.data.bin.1, list(HB.environment.data.bin.1$ecoregion)
+	)
+
+## Predator
+PR.environment.data.bin.1 <- trait.abundance.data %>%
+	select(UID, PR) %>%
+	inner_join(environment.data, by = "UID")
+
+PR.environment.data <- split(
+	PR.environment.data.bin.1, list(PR.environment.data.bin.1$ecoregion)
+	)
+```
+
+
+\newpage
+### Low Dispersal-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Low Dispersal, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the low dispersal-by-environment BRT for each ecoregion
+low.dispersal.by.environment.BRT.list <- parLapply(
+	cluster, 
+	low.dispersal.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	dispersal.low ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Low Dispersal, include = FALSE, eval = FALSE}
+## Get results for each BRT
+low.dispersal.environment.BRT.results <- lapply(
+	low.dispersal.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+low.dispersal.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### High Dispersal-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: High Dispersal, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the high dispersal-by-environment BRT for each ecoregion
+high.dispersal.by.environment.BRT.list <- parLapply(
+	cluster, 
+	high.dispersal.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	dispersal.high ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: High Dispersal, include = FALSE, eval = FALSE}
+## Get results for each BRT
+high.dispersal.environment.BRT.results <- lapply(
+	high.dispersal.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+high.dispersal.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Nonflyer-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Nonflyer, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the nonflyer-by-environment BRT for each ecoregion
+nonflyer.by.environment.BRT.list <- parLapply(
+	cluster, 
+	nonflyer.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	flying.strength.none ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Nonflyer, include = FALSE, eval = FALSE}
+## Get results for each BRT
+nonflyer.environment.BRT.results <- lapply(
+	nonflyer.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+nonflyer.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Weak Flyer-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Weak Flyer, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the weak flyer-by-environment BRT for each ecoregion
+weak.flyer.by.environment.BRT.list <- parLapply(
+	cluster, 
+	weak.flyer.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	flying.strength.weak ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Weak Flyer, include = FALSE, eval = FALSE}
+## Get results for each BRT
+weak.flyer.environment.BRT.results <- lapply(
+	weak.flyer.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+weak.flyer.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Strong Flyer-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Strong Flyer, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the strong flyer-by-environment BRT for each ecoregion
+strong.flyer.by.environment.BRT.list <- parLapply(
+	cluster, 
+	strong.flyer.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	flying.strength.strong ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Strong Flyer, include = FALSE, eval = FALSE}
+## Get results for each BRT
+strong.flyer.environment.BRT.results <- lapply(
+	strong.flyer.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+strong.flyer.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Small Size-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Small Size, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the small size-by-environment BRT for each ecoregion
+small.size.by.environment.BRT.list <- parLapply(
+	cluster, 
+	small.size.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	size.small ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Small Size, include = FALSE, eval = FALSE}
+## Get results for each BRT
+small.size.environment.BRT.results <- lapply(
+	small.size.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+small.size.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Medium Size-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Medium Size, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the medium size-by-environment BRT for each ecoregion
+medium.size.by.environment.BRT.list <- parLapply(
+	cluster, 
+	medium.size.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	size.medium ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Medium Size, include = FALSE, eval = FALSE}
+## Get results for each BRT
+medium.size.environment.BRT.results <- lapply(
+	medium.size.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+medium.size.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Large Size-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Large Size, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the large size-by-environment BRT for each ecoregion
+large.size.by.environment.BRT.list <- parLapply(
+	cluster, 
+	large.size.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	size.large ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Large Size, include = FALSE, eval = FALSE}
+## Get results for each BRT
+large.size.environment.BRT.results <- lapply(
+	large.size.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+large.size.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Depositional-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Depositional, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the depositional-by-environment BRT for each ecoregion
+depositional.by.environment.BRT.list <- parLapply(
+	cluster, 
+	depositional.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	depositional ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Depositional, include = FALSE, eval = FALSE}
+## Get results for each BRT
+depositional.environment.BRT.results <- lapply(
+	depositional.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+depositional.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Depositional-Erosional-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Depositional-Erosional, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the depositional-erosional-by-environment BRT for each ecoregion
+depositional.erosional.by.environment.BRT.list <- parLapply(
+	cluster, 
+	depositional.erosional.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	depositional.erosional ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Depositional-Erosional, include = FALSE, eval = FALSE}
+## Get results for each BRT
+depositional.erosional.environment.BRT.results <- lapply(
+	depositional.erosional.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+depositional.erosional.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Erosional-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Erosional, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the erosional-by-environment BRT for each ecoregion
+erosional.by.environment.BRT.list <- parLapply(
+	cluster, 
+	erosional.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	erosional ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Erosional, include = FALSE, eval = FALSE}
+## Get results for each BRT
+erosional.environment.BRT.results <- lapply(
+	erosional.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+erosional.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Cold Water-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Cold Water, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the cold water-by-environment BRT for each ecoregion
+cold.water.by.environment.BRT.list <- parLapply(
+	cluster, 
+	cold.water.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	cold ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Cold Water, include = FALSE, eval = FALSE}
+## Get results for each BRT
+cold.water.environment.BRT.results <- lapply(
+	cold.water.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+cold.water.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Cool-Warm Water-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Cool-Warm Water, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the cool-warm water-by-environment BRT for each ecoregion
+cool.warm.water.by.environment.BRT.list <- parLapply(
+	cluster, 
+	cool.warm.water.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	cool.warm ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Cool-Warm Water, include = FALSE, eval = FALSE}
+## Get results for each BRT
+cool.warm.water.environment.BRT.results <- lapply(
+	cool.warm.water.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+cool.warm.water.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Warm Water-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Warm Water, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the warm water-by-environment BRT for each ecoregion
+warm.water.by.environment.BRT.list <- parLapply(
+	cluster, 
+	warm.water.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	warm ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Warm Water, include = FALSE, eval = FALSE}
+## Get results for each BRT
+warm.water.environment.BRT.results <- lapply(
+	warm.water.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+warm.water.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Sensitive Tolerance-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Sensitive Tolerance, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the sensitive tolerance-by-environment BRT for each ecoregion
+sensitive.tolerance.by.environment.BRT.list <- parLapply(
+	cluster, 
+	sensitive.tolerance.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	sensitive ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Sensitive Tolerance, include = FALSE, eval = FALSE}
+## Get results for each BRT
+sensitive.tolerance.environment.BRT.results <- lapply(
+	sensitive.tolerance.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+sensitive.tolerance.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Intermediate Tolerance-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Intermediate Tolerance, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the intermediate tolerance-by-environment BRT for each ecoregion
+intermediate.tolerance.by.environment.BRT.list <- parLapply(
+	cluster, 
+	intermediate.tolerance.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	medium ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Intermediate Tolerance, include = FALSE, eval = FALSE}
+## Get results for each BRT
+intermediate.tolerance.environment.BRT.results <- lapply(
+	intermediate.tolerance.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+intermediate.tolerance.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Tolerant-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: Tolerant, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the tolerant-by-environment BRT for each ecoregion
+tolerant.by.environment.BRT.list <- parLapply(
+	cluster, 
+	tolerant.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	tolerant ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: Tolerant, include = FALSE, eval = FALSE}
+## Get results for each BRT
+tolerant.environment.BRT.results <- lapply(
+	tolerant.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+tolerant.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Collector Gatherer-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: CG, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the CG-by-environment BRT for each ecoregion
+CG.by.environment.BRT.list <- parLapply(
+	cluster, 
+	CG.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	CG ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: CG, include = FALSE, eval = FALSE}
+## Get results for each BRT
+CG.environment.BRT.results <- lapply(
+	CG.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+CG.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Collector Filterer-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: CF, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the CF-by-environment BRT for each ecoregion
+CF.by.environment.BRT.list <- parLapply(
+	cluster, 
+	CF.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	CF ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: CF, include = FALSE, eval = FALSE}
+## Get results for each BRT
+CF.environment.BRT.results <- lapply(
+	CF.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+CF.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Herbivore-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: HB, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the HB-by-environment BRT for each ecoregion
+HB.by.environment.BRT.list <- parLapply(
+	cluster, 
+	HB.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	HB ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: HB, include = FALSE, eval = FALSE}
+## Get results for each BRT
+HB.environment.BRT.results <- lapply(
+	HB.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+HB.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+### Predator-by-Environment BRTs
+
+```{r Trait-by-Environment BRT: PR, echo = TRUE, eval = FALSE}
+## Start cluster
+cluster <- makeCluster(n.cores)
+
+## Run the PR-by-environment BRT for each ecoregion
+PR.by.environment.BRT.list <- parLapply(
+	cluster, 
+	PR.environment.data, 
+	fun =  function(j) {
+		require(gbm)
+ 	
+ 	  ## BRT fitting
+ 	  trait.by.DisEQ.BRT <- gbm(
+ 	  	PR ~ .,
+ 	  	distribution = "poisson",
+ 	  	data = j[, -c(1, 3)],
+ 	  	n.trees = 10000,
+ 	  	interaction.depth = 4,
+ 	  	n.minobsinnode = 5,
+ 	  	shrinkage = 0.0001,
+ 	  	bag.fraction = 0.5,
+ 	  	cv.folds = 10
+ 	  )
+ 	  }
+)
+
+## Stop cluster
+stopCluster(cluster)
+```
+
+```{r Extract Trait-by-Environment BRT Results: PR, include = FALSE, eval = FALSE}
+## Get results for each BRT
+PR.environment.BRT.results <- lapply(
+	PR.by.environment.BRT.list,
+	FUN = function(j) {
+		
+		## Get variables and relative influence from the BRT
+		BRT.summary <- tibble::as_tibble(gbm::summary.gbm(j, plotit = FALSE))
+		
+		## Assign predictor types
+		BRT.summary$predictor.type <- length(21)
+     
+    ## Assign predictor types to each predictor
+    BRT.summary.final <- transform(
+    	BRT.summary,
+    	predictor.type = if_else(BRT.summary$var == "site.centrality" |
+                               BRT.summary$var == "range.basin.elevation" |
+                               BRT.summary$var == "mean.basin.elevation" |
+                               BRT.summary$var == "mean.annual.flow" |
+                               BRT.summary$var == "basin.area" |
+     												   BRT.summary$var == "site.long" |
+                               BRT.summary$var == "site.lat", "Network",
+                       if_else(BRT.summary$var == "pct.ISC" |
+                               BRT.summary$var == "pct.urb" |
+                               BRT.summary$var == "pct.ag" |
+                               BRT.summary$var == "pct.for", "Landscape",
+                       if_else(BRT.summary$var == "AQM.cover" |
+                               BRT.summary$var == "ALG.cover" |
+                               BRT.summary$var == "NAT.cover" |
+                               BRT.summary$var == "LWD.reach" |
+                               BRT.summary$var == "DOC" |
+                               BRT.summary$var == "total.P" |
+                               BRT.summary$var == "total.N", "Environmental",
+                     			    "NULL"))))
+    }
+	) %>%
+	bind_rows()
+
+## Add ecoregion vector
+PR.environment.BRT.results$ecoregion <- rep(
+	c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+	each = 18)
+```
+
+
+\newpage
+## Respone to Q4: What are the environmental predictors of functional trait abundances?
+
+Predictors of functional traits varied by trait category and ecoregion (Figure 6). Dispersal traits were primarily influenced by network (39/72 trait-by-ecoregion combinations) and environmental (23/81 trait-by-ecoregion combinations) predictors, with environmental predictors also frequently of secondary influence (41/81 trait-by-ecoregion combinations) and landscape predictors of tertiary influence (39/81 trait-by-ecoregion combinations). Similarly, habitat traits were primarily influenced by network (48/81 trait-by-ecoregion combinations) and environmental (29/81 trait-by-ecoregion combinations) predictors; environmental predictors were commonly of secondary influence (37/81 trait-by-ecoregion combinations) and landscape predictors of tertiary influence (40/81 trait-by-ecoregion combinations). Ecology traits were primarily structured by environmental (17/36 trait-by-ecoregion combinations) and network (15/36 trait-by-ecoregion combinations) predictors. Each of environmental, landscape, and network predictors were frequently of secondary influence for ecology traits (environmental = 12/36, landscape = 10/36, network = 14/36 trait-by-ecoregion combinations), which was in contrast to dispersal and habitat traits where environmental predictors were most commonly of secondary influence; however, we again identified landscape predictors to most commonly be of tertiary importance (20/36 trait-by-ecoregion combinations).
+
+
+```{r Trait-by-Environment Figure, echo = FALSE, fig.cap = "Facet plot of trait-by-environment relationships."}
+knitr::include_graphics(paste0(getwd(), "/figures/Figure_6-traits_by_environment-final.jpg"))
+```
+
+
+
+
+\newpage
+# Supplementary Results
+
+\vspace{4pt}
+
+## Environmental Filtering & Habitat Matching Model
+
+We fitted a linear mixed-effects model to analyze the relationship between environmental filtering and habitat matching. The model was fitted as:
+
+$$Environmental\ Filtering = Intercept\ + Habitat\ Matching + (1\ |\ Ecoregion) + e$$
+
+where environmental filtering was the response, habitat matching was the predict, ecoregion was a random intercept, and $e$ was the residual error. Model fit was assessed using `check_model()` in the `performance` package. Influence of predictors was estimated with Type III sums-of-squares with Kenward-Roger denominator degrees of freedom, and effect sizes were estimated as $\eta^2$ using the `eta_squared()` function.
+
+
+```{r DisEQ LMM: Fit Model, echo = TRUE}
+DisEQ.LMM <- lmer(
+	filtering.scaled ~ mismatch.scaled + (1 | ecoregion),
+	data = final.DisEQ.data,
+	REML = TRUE
+	)
+```
+
+\vspace{4pt}
+
+```{r DisEQ LMM: Check Model Assumptions, echo = FALSE, fig.cap = "Diagnostic plots for the environmental filtering and habitat matching linear mixed-effects model."}
+check_model(DisEQ.LMM)
+```
+
+\vspace{4pt}
+
+```{r DisEQ LMM: ANOVA, echo = TRUE}
+## Fit an ANOVA with Type III sums-of-squares
+DisEQ.LMM.anova <- anova(
+	object = DisEQ.LMM,
+	type = "III",
+	ddf = "Kenward-Roger"
+	)
+```
+
+\vspace{4pt}
+
+```{r DisEQ LMM: ANOVA Table, echo = FALSE}
+kable(
+	DisEQ.LMM.anova,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "ANOVA table for the environmental filtering by habitat matching linear mixed-effects model."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r DisEQ LMM: Coefficient Table, echo = FALSE}
+LMM.summary <- summary(DisEQ.LMM)
+
+kable(
+	LMM.summary$coefficients,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Table of coefficients for the environmental filtering by habitat matching linear mixed-effects model. Approximately 90\\% of the variation in the model was explained solely by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r DisEQ LMM: Effect Size, echo = FALSE}
+kable(
+	eta_squared(DisEQ.LMM.anova, partial = FALSE, ci = 0.95),
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Effect size for Habitat Matching in the environmental filtering by habitat matching linear mixed-effects model.",
+	col.names = c("Term", "$\\eta^2$", "Confidence Level", "$CI_{lower}$", "$CI_{upper}$"),
+	escape = FALSE
+	) %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\newpage
+```{r View the DisEQ LMM Figure, echo = FALSE, fig.cap = "Plot of environmental filtering against habitat matching while controlling for the effect of ecoregion."}
+knitr::include_graphics(paste0(getwd(), "/figures/Figure_S4-DisEQ_regression.jpg"))
+```
+
+
+
+\newpage
+## Filtering & Habitat Matching Summaries
+
+```{r Filtering and Habitat Matching Numerical Summaries, include = FALSE}
+library(plyr)
+
+filtering.summary <- ddply(DisEQ.analysis.results, c("ecoregion"),
+													 summarise,
+													 N    = sum(!is.na(filtering.scaled)),
+													 Mean = mean(filtering.scaled, na.rm = TRUE),
+													 SD   = sd(filtering.scaled, na.rm = TRUE))
+
+mismatch.summary <- ddply(DisEQ.analysis.results, c("ecoregion"),
+													summarise,
+													N    = sum(!is.na(mismatch.scaled)),
+													Mean = mean(mismatch.scaled, na.rm = TRUE),
+													SD   = sd(mismatch.scaled, na.rm = TRUE))
+```
+
+```{r Filtering Numerical Summary, echo = FALSE}
+kable(filtering.summary, 
+			booktabs = TRUE,
+			digits = 3,
+			caption =  "Numerical summary of environmental filtering by ecoregion.") %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Habitat Matching Numerial Summary, echo = FALSE}
+kable(mismatch.summary,
+			booktabs = TRUE,
+			digits = 3,
+			caption =  "Numerical summary of habitat matching by ecoregion.") %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+
+\newpage
+## Trait Diversity Summaries
+
+```{r Trait Diversity Numerical Summaries, include = FALSE}
+FRic.summary <- ddply(final.DisEQ.data, c("ecoregion"),
+											summarise,
+											N    = sum(!is.na(FRic)),
+											Mean = mean(FRic, na.rm = TRUE),
+											SD   = sd(FRic, na.rm = TRUE))
+
+FEve.summary <- ddply(final.DisEQ.data, c("ecoregion"),
+											summarise,
+											N    = sum(!is.na(FEve)),
+											Mean = mean(FEve, na.rm = TRUE),
+											SD   = sd(FEve, na.rm = TRUE))
+
+FDiv.summary <- ddply(final.DisEQ.data, c("ecoregion"),
+											summarise,
+											N    = sum(!is.na(FDiv)),
+											Mean = mean(FDiv, na.rm = TRUE),
+											SD   = sd(FDiv, na.rm = TRUE))
+
+FDis.summary <- ddply(final.DisEQ.data, c("ecoregion"),
+											summarise,
+											N    = sum(!is.na(FDis)),
+											Mean = mean(FDis, na.rm = TRUE),
+											SD   = sd(FDis, na.rm = TRUE))
+```
+
+
+```{r FRic Numerical Summary, echo = FALSE}
+kable(FRic.summary, 
+			booktabs = TRUE,
+			digits = 3,
+			caption =  "Numerical summary of functional richness (FRic) by ecoregion.") %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r FEve Numerical Summary, echo = FALSE}
+kable(FEve.summary, 
+			booktabs = TRUE,
+			digits = 3,
+			caption =  "Numerical summary of functional evenness (FEve) by ecoregion.") %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\newpage
+
+```{r FDiv Numerical Summary, echo = FALSE}
+kable(FDiv.summary, 
+			booktabs = TRUE,
+			digits = 3,
+			caption =  "Numerical summary of functional divergence (FDiv) by ecoregion.") %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r FDis Numerical Summary, echo = FALSE}
+kable(FDis.summary, 
+			booktabs = TRUE,
+			digits = 3,
+			caption =  "Numerical summary of functional Dispersion (FDis) by ecoregion.") %>%
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+
+\newpage
+## Community Composition
+
+We evaluated differences in community composition using a permutational multivariate analysis of variance (PERMANOVA). We applied a Bray–Curtis dissimilarity index to a square-root transformed abundance matrix for each ecoregional metacommunity and then compared dissimilarities using a PERMANOVA with 10000 permutations. Results were illustrated using non-metric multi-dimensional scaling (NMDS); three dimensions were required to represent the communities in ordination space with acceptable stress (stress $\leq$ 0.20).
+
+For additional reading on PERMANOVA, please see:
+
+> Anderson, M. J. 2001. A new method for non-parametric multivariate analysis of variance. _Austral Ecology_ 26:32–46.
+
+```{r Calculate Bray-Curtis Dissimilarity, echo = TRUE}
+## Transform the community matrix (square-root)
+BC.community.matrix <- sqrt(final.data[rowSums(final.data[, 67:142]) > 0, 67:142])
+
+## Calculate the Bray-Curtis dissimilarity
+BC.distance  <- vegdist(
+	BC.community.matrix,
+	method = "bray",
+	binary = FALSE
+	)
+```
+
+```{r Run the NMDS, echo = TRUE, eval = FALSE}
+BC.NMDS <- monoMDS(
+	BC.distance, k = 3, # 3 dimensions to reduce ordination stress
+	model = "global",
+	scaling = TRUE,
+	maxit = 500
+	)
+```
+
+```{r Check NMDS Shepard Plot, include = FALSE}
+stressplot(BC.NMDS)
+```
+
+```{r PERMANOVA Data Management, include = FALSE, eval = FALSE}
+## Set ecoregion as factor for the PERMANOVA
+ecoregion.vector.PERMANOVA <- final.data[rowSums(final.data[, 67:142]) > 0, c(1, 25)] %>%
+	as_tibble()
+```
+
+```{r Run the PERMANOVA, echo = TRUE, eval = FALSE}
+## PERMANOVA
+BC.PERMANOVA <- adonis(
+	community.matrix ~ ecoregion,
+	data = ecoregion.vector.PERMANOVA,
+	method = "bray",
+	sqrt.dist = TRUE,
+	permutations = 10000
+	)
+```
+
+```{r PERMANOVA Results, echo = FALSE}
+kable(
+	BC.PERMANOVA$aov.tab,
+	booktabs = TRUE,
+	digits = 3,
+	caption = "Results of the PERMANOVA.",
+	col.names = c("df", "SS", "MS", "F", "$R^2$", "P-value")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+
+
+\newpage
+# R Session Information
+
+```{r R Packages, echo = FALSE}
+df_session_packages <- devtools::session_info()$packages %>% 
+  as.data.frame(.) %>% 
+  filter(attached == TRUE) %>% 
+  dplyr::select(loadedversion, date) %>% 
+  rownames_to_column
+
+colnames(df_session_packages) <- c("Package", "Loaded Version", "Date")
+
+kable(
+  df_session_packages, 
+  booktabs = TRUE,
+  caption = "Packages required for data management and analyses."
+  ) %>%
+	kable_styling(
+		full_width = FALSE,
+  	latex_options = c("HOLD_position", "striped")
+  	) 
+```
+
+
+
+
+
+```{r Save Final Workspace, include = FALSE, eval = FALSE}
+save.image("data_analysis/2-DisEQ_analyses/2-DisEQ_analyses-Workspace.RData")
+```
+
+
+
+```{r Reduce Workspace Size, include = FALSE}
+## Remove large objects for faster loading
+remove(CF.by.environment.BRT.list, CG.by.environment.BRT.list, cold.water.by.environment.BRT.list,
+			 cool.warm.water.by.environment.BRT.list, depositional.by.environment.BRT.list,
+			 depositional.erosional.by.environment.BRT.list, erosional.by.environment.BRT.list,
+			 filtering.by.trait.BRT.list, HB.by.environment.BRT.list, high.dispersal.by.environment.BRT.list,
+			 large.size.by.environment.BRT.list, low.dispersal.by.environment.BRT.list,
+			 medium.size.by.environment.BRT.list, intermediate.tolerance.by.environment.BRT.list,
+			 mismatch.by.trait.BRT.list, nonflyer.by.environment.BRT.list,
+			 PR.by.environment.BRT.list, sensitive.tolerance.by.environment.BRT.list,
+			 small.size.by.environment.BRT.list, strong.flyer.by.environment.BRT.list,
+			 tolerant.by.environment.BRT.list, warm.water.by.environment.BRT.list,
+			 weak.flyer.by.environment.BRT.list)
+```
+
+
+
+```{r Save Reduced Workspace, include = FALSE}
+save.image("data_analysis/2-DisEQ_analyses/2-DisEQ_analyses-Reduced_Workspace.RData")
+```
+
+
+
+

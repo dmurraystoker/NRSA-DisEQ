@@ -1,0 +1,1151 @@
+---
+title: "Environmental filtering and niche mismatching of riverine invertebrate communities"
+subtitle: "NRSA DisEQ-BRT Supplemental Tables"
+output:
+  pdf_document:
+    fig_caption: yes
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(results = "hold", fig.pos = "H", fig.align = "center", out.width = "92.5%")
+options(knitr.graphics.error = FALSE)
+kableExtra::usepackage_latex("float")
+```
+
+```{r Load Package for R Markdown, include = FALSE}
+library(kableExtra)
+library(knitr)
+```
+
+```{r Load Packages & Data, include = FALSE}
+library(tidyverse)
+library(reshape2)
+
+## Load the reduced workspace
+load("data_analysis/2-DisEQ_analyses/2-DisEQ_analyses-Reduced_Workspace.RData")
+```
+
+
+\newpage
+# DisEQ-by-Traits
+
+Supplementary tables for the DisEQ-by-traits boosted regression trees. Complete tables of the relative influence for each trait predictor are provided (Tables 1-2), along with tables presenting the summed relative influence for all predictor variables within the respective category with a relative influence >5.00 (Tables 3-4).
+
+
+```{r DisEQ-by-Traits Data Mangement, include = FALSE}
+## Format DisEQ-by-traits matrices for plotting
+
+## Filtering by traits
+filtering.by.traits.matrix <- dcast(
+	filtering.by.trait.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(9, 8, 11, 13, 12, 20, 19, 18, 6:7, 10, 4:5, 22, 17, 15, 21, 3, 2, 14, 16)) %>%
+	as.matrix()
+
+colnames(filtering.by.traits.matrix) <- c(
+	"Low Dispersal", "High Dispersal", "Nonflyer", "Weak Flyer", "Strong Flyer",
+	"Small Size", "Medium Size", "Large Size", "Depositional", "Depositional-Erosional", 
+	"Erosional", "Cold Water", "Cool-Warm Water", "Warm Water",
+	"Sensitive Tolerance", "Intermediate Tolerance", "Tolerant",
+	"CG", "CF", "HB", "PR"
+	)
+
+rownames(filtering.by.traits.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Mismatch by traits
+mismatch.by.traits.matrix <- dcast(
+	mismatch.by.trait.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(9, 8, 11, 13, 12, 20, 19, 18, 6:7, 10, 4:5, 22, 17, 15, 21, 3, 2, 14, 16)) %>%
+	as.matrix()
+
+colnames(mismatch.by.traits.matrix) <- c(
+	"Low Dispersal", "High Dispersal", "Nonflyer", "Weak Flyer", "Strong Flyer",
+	"Small Size", "Medium Size", "Large Size", "Depositional", "Depositional-Erosional", 
+	"Erosional", "Cold Water", "Cool-Warm Water", "Warm Water",
+	"Sensitive Tolerance", "Intermediate Tolerance", "Tolerant",
+	"CG", "CF", "HB", "PR"
+	)
+
+rownames(mismatch.by.traits.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+```
+
+
+
+
+
+```{r Filtering-by-Traits Relative Influence, echo = FALSE}
+kable(
+	filtering.by.traits.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for trait predictors in the filtering-by-traits boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Mismatch-by-Traits Relative Influence, echo = FALSE}
+kable(
+	mismatch.by.traits.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for trait predictors in the mismatch-by-traits boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+
+
+
+
+```{r Filtered DisEQ-by-Traits Results, include = FALSE}
+## Filter data to only include variables with a relative influence >= 5.00
+
+## Filtering-by-traits
+filtering.by.trait.threshold.RI <- filtering.by.trait.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Mismatch-by-traits
+mismatch.by.trait.threshold.RI <- mismatch.by.trait.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+```
+
+
+```{r Filtering-by-Traits Summed Relative Influence, echo = FALSE}
+kable(
+	filtering.by.trait.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the filtering-by-traits boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{4pt}
+
+```{r Mismatch-by-Traits Summed Relative Influence, echo = FALSE}
+kable(
+	mismatch.by.trait.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the mismatch-by-traits boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+\newpage
+# Trait-by-Environment
+
+Supplementary tables for the trait-by-environment boosted regression trees. Complete tables of the relative influence for each trait predictor are provided (Tables 5-25), along with tables presenting the summed relative influence for all predictor variables within the respective category with a relative influence >5.00 (Tables 26-46).
+
+
+```{r Traits-by-Environment Data Management, include = FALSE}
+## Format traits-by-environment matrices for plotting
+
+## Low dispersal
+low.dispersal.by.environment.matrix <- dcast(
+	low.dispersal.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(low.dispersal.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(low.dispersal.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## High dispersal
+high.dispersal.by.environment.matrix <- dcast(
+	high.dispersal.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(high.dispersal.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(high.dispersal.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Nonflyer
+nonflyer.by.environment.matrix <- dcast(
+	nonflyer.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(nonflyer.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(nonflyer.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Weak flyer
+weak.flyer.by.environment.matrix <- dcast(
+	weak.flyer.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(weak.flyer.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(weak.flyer.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Strong flyer
+strong.flyer.by.environment.matrix <- dcast(
+	strong.flyer.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(strong.flyer.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(strong.flyer.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Small size
+small.size.by.environment.matrix <- dcast(
+	small.size.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(small.size.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(small.size.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Medium size
+medium.size.by.environment.matrix <- dcast(
+	medium.size.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(medium.size.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(medium.size.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Large size
+large.size.by.environment.matrix <- dcast(
+	large.size.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(large.size.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(large.size.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Depositional
+depositional.by.environment.matrix <- dcast(
+	depositional.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(depositional.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(depositional.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Depositional-erosional
+depositional.erosional.by.environment.matrix <- dcast(
+	depositional.erosional.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(depositional.erosional.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(depositional.erosional.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Erosional
+erosional.by.environment.matrix <- dcast(
+	erosional.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(erosional.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(erosional.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Cold water
+cold.water.by.environment.matrix <- dcast(
+	cold.water.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(cold.water.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(cold.water.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Cool-warm water
+cool.warm.water.by.environment.matrix <- dcast(
+	cool.warm.water.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(cool.warm.water.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(cool.warm.water.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Warm water
+warm.water.by.environment.matrix <- dcast(
+	warm.water.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(warm.water.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(warm.water.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## CG
+CG.by.environment.matrix <- dcast(
+	CG.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(CG.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(CG.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## CF
+CF.by.environment.matrix <- dcast(
+	CF.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(CF.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(CF.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## HB
+HB.by.environment.matrix <- dcast(
+	HB.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(HB.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(HB.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## PR
+PR.by.environment.matrix <- dcast(
+	PR.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(PR.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(PR.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Sensitive tolerance
+sensitive.tolerance.by.environment.matrix <- dcast(
+	sensitive.tolerance.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(sensitive.tolerance.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(sensitive.tolerance.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Medium tolerance
+intermediate.tolerance.by.environment.matrix <- dcast(
+	intermediate.tolerance.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(intermediate.tolerance.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(intermediate.tolerance.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+
+## Tolerant
+tolerant.by.environment.matrix <- dcast(
+	tolerant.environment.BRT.results, ecoregion ~ var, value.var = "rel.inf"
+	) %>%
+	select(c(18:19, 5:6, 9, 2:3, 11, 10, 13, 12, 7, 17, 16, 4, 8, 14:15)) %>%
+	as.matrix()
+
+colnames(tolerant.by.environment.matrix) <- c(
+	"Total N", "Total P", "DOC", "LWD Reach", "NAT Cover", "ALG Cover", "AQM Cover",
+	"% Forested", "% Ag", "% Urban", "% ISC", "Mean Annual Flow", "Longitude", "Latitude",
+	"Basin Area", "Mean Basin Elevation", "Range Basin Elevation", "Site Centrality"
+	)
+
+rownames(tolerant.by.environment.matrix) <- c(
+	"CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"
+)
+```
+
+
+
+
+
+```{r Low Dispersal Relative Influence, echo = FALSE}
+kable(
+	low.dispersal.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the low dispersal-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r High Dispersal Relative Influence, echo = FALSE}
+kable(
+	high.dispersal.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the high dispersal-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Nonflyer Relative Influence, echo = FALSE}
+kable(
+	nonflyer.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the nonflyer-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Weak Flyer Relative Influence, echo = FALSE}
+kable(
+	weak.flyer.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the weak flyer-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Strong Flyer Relative Influence, echo = FALSE}
+kable(
+	strong.flyer.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the strong flyer-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Small Size Relative Influence, echo = FALSE}
+kable(
+	small.size.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the small size-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Medium Size Relative Influence, echo = FALSE}
+kable(
+	medium.size.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the medium size-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Large Size Relative Influence, echo = FALSE}
+kable(
+	large.size.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the large size-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Depositional Relative Influence, echo = FALSE}
+kable(
+	depositional.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the depositional-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Depositional-Erosional Relative Influence, echo = FALSE}
+kable(
+	depositional.erosional.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the depositional-erosional-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Erosional Relative Influence, echo = FALSE}
+kable(
+	erosional.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the erosional-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Cold Water Relative Influence, echo = FALSE}
+kable(
+	cold.water.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the cold water-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Cool-Warm Water Relative Influence, echo = FALSE}
+kable(
+	cool.warm.water.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the cool-warm water-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Warm Water Relative Influence, echo = FALSE}
+kable(
+	warm.water.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the warm water-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Sensitive Tolerance Relative Influence, echo = FALSE}
+kable(
+	sensitive.tolerance.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the sensitive tolerance-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Intermediate Tolerance Relative Influence, echo = FALSE}
+kable(
+	sensitive.tolerance.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the intermediate tolerance-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r Tolerant Relative Influence, echo = FALSE}
+kable(
+	tolerant.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the tolerant-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r CG Relative Influence, echo = FALSE}
+kable(
+	CG.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the collector-gatherer-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r CF Relative Influence, echo = FALSE}
+kable(
+	CF.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the collector-filterer-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r HB Relative Influence, echo = FALSE}
+kable(
+	HB.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the herbivore-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+```{r PR Relative Influence, echo = FALSE}
+kable(
+	PR.by.environment.matrix,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Table of relative influence values for predictors in the predator-by-environment boosted regression trees, with relative influence values provided for each ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped", "scale_down")) %>%
+	landscape()
+```
+
+
+
+
+
+```{r Filtered Traits-by-Environment Results, include = FALSE}
+## Filter data to only include variables with a relative influence >= 5.00
+
+## Low dispersal
+low.dispersal.threshold.RI <- low.dispersal.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## High dispersal
+high.dispersal.threshold.RI <- high.dispersal.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Nonflyer
+nonflyer.threshold.RI <- nonflyer.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Weak flyer
+weak.flyer.threshold.RI <- weak.flyer.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Strong flyer
+strong.flyer.threshold.RI <- strong.flyer.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Small size
+small.size.threshold.RI <- small.size.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Medium size
+medium.size.threshold.RI <- medium.size.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Large size
+large.size.threshold.RI <- large.size.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Depositional
+depositional.threshold.RI <- depositional.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Depositional-erosional
+depositional.erosional.threshold.RI <- depositional.erosional.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Erosional
+erosional.threshold.RI <- erosional.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Cold water
+cold.water.threshold.RI <- cold.water.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Cool-warm water
+cool.warm.water.threshold.RI <- cool.warm.water.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Warm water
+warm.water.threshold.RI <- warm.water.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Sensitive tolerance
+sensitive.tolerance.threshold.RI <- sensitive.tolerance.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Intermediate tolerance
+intermediate.tolerance.threshold.RI <- intermediate.tolerance.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## Tolerant
+tolerant.threshold.RI <- tolerant.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## CG
+CG.threshold.RI <- CG.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## CF
+CF.threshold.RI <- CF.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## HB
+HB.threshold.RI <- HB.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+
+## PR
+PR.threshold.RI <- PR.environment.BRT.results %>%
+	filter(rel.inf > 5.00) %>%
+	group_by(ecoregion, predictor.type) %>%
+	summarise(summed.RI = sum(rel.inf))
+```
+
+
+
+
+
+```{r Low Dispersal-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	low.dispersal.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the low dispersal-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r High Dispersal-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	high.dispersal.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the high dispersal-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Nonflyer-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	nonflyer.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the nonflyer-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Weak Flyer-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	weak.flyer.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the weak flyer-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Strong Flyer-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	strong.flyer.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the strong flyer-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Small Size-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	small.size.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the small size-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Medium Size-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	medium.size.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the medium size-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Large Size-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	large.size.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the large size-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Depositional-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	depositional.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the depositional-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Depositional-Erosional-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	depositional.erosional.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the depositional-erosional-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Erosional-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	erosional.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the erosional-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Cold Water-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	cold.water.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the cold water-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Cool-Warm Water-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	cool.warm.water.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the cool-warm water-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Warm Water-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	warm.water.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the warm water-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Sensitive Tolerance-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	sensitive.tolerance.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the sensitive tolerance-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Intermediate Tolerance-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	intermediate.tolerance.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the intermediate tolerance-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r Tolerant-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	tolerant.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the tolerant-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r CG-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	CG.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the collector-gatherer-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r CF-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	CF.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the collector-filterer-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r HB-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	HB.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the herbivore-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+```{r PR-by-Environment Summed Relative Influence, echo = FALSE}
+kable(
+	PR.threshold.RI,
+	booktabs = TRUE,
+	digits = 2,
+	caption = "Summed relative influence for all predictor variables within the respective category with a relative influence >5.00 for the predator-by-environment boosted regression trees. Summed relative influence was calculated for each of the ecoregions.",
+	col.names = c("Ecoregion", "Predictor Category", "Relative Influence")
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+
+
+
+\newpage
+# R Session Information
+
+```{r R Packages, echo = FALSE}
+df_session_packages <- devtools::session_info()$packages %>% 
+  as.data.frame(.) %>% 
+  filter(attached == TRUE) %>% 
+  dplyr::select(loadedversion, date) %>% 
+  rownames_to_column
+
+colnames(df_session_packages) <- c("Package", "Loaded Version", "Date")
+
+kable(
+  df_session_packages, 
+  booktabs = TRUE,
+  caption = "Packages required for data management and summaries."
+  ) %>%
+	kable_styling(
+		full_width = FALSE,
+  	latex_options = c("HOLD_position", "striped")
+  	) 
+```
+
+
+
+

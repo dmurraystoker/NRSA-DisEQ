@@ -1,0 +1,114 @@
+---
+title: "Environmental filtering and niche (mis)matching of riverine invertebrate communities"
+subtitle: "NRSA DisEQ-Data Management"
+output: 
+  pdf_document: 
+    fig_caption: yes
+always_allow_html: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(results = "hold", fig.pos = "H", fig.align = "center", out.width = "92.5%")
+options(knitr.graphics.error = FALSE)
+kableExtra::usepackage_latex("float")
+```
+
+```{r Load Package for RMarkdown, include = FALSE}
+library(kableExtra)
+library(knitr)
+```
+
+
+# Background
+
+Raw invertebrate data were formatted for analysis by reshaping the file from a long to wide format. We also calculated the relative abundance of all invertebrates, retaining all taxa with a relative abundance > 0.25%.
+
+```{r Load Packages, include = FALSE}
+library(reshape2)
+
+## Load the tidyverse
+library(tidyverse) 
+```
+
+\vspace{10pt}
+
+```{r Read in Raw Data, echo = TRUE}
+## Read in the raw invertebrate data
+raw.invertebrate.data <- read_csv(
+	"data/EPA-NRSA_0809-invertebrates-RAW.csv",
+	show_col_types = FALSE
+	)
+```
+
+\vspace{10pt}
+
+```{r Reshape the Invertebrate Data, echo = TRUE}
+## Reshape the data to a site-by-taxa matrix (rows = sites, columns = taxa)
+reshaped.invertebrate.data <- dcast(
+	raw.invertebrate.data, 
+	UID ~ TARGET_TAXON,
+	sum,
+	value.var = "TOTAL300"
+	)
+```
+
+\vspace{10pt}
+
+```{r Calculate Relative Abundance, echo = TRUE}
+## Percent relative abundance by total abundance of all collected invertebrates
+relative.abundance.data <- reshaped.invertebrate.data[, 2:975]/549426*100 
+# Total abundance of collected invertebrates = 549426
+```
+
+\vspace{10pt}
+
+```{r Select Taxa Above Relative Abundance Threshold, echo = TRUE}
+taxa.list <- relative.abundance.data[, colSums(relative.abundance.data, na.rm = TRUE) > 0.25]
+# 0.25% cutoff = 73.86 total abundance of the CUS
+```
+
+\vspace{10pt}
+
+```{r Revert Relative to Total Abundance, echo = TRUE}
+## Revert relative abundance back to total abundance for later analyses
+invertebrate.data <- taxa.list/100*549426
+
+## Add UID
+invertebrate.data$UID <- reshaped.invertebrate.data$UID
+```
+
+\vspace{10pt}
+
+```{r Export Invertebrate Data, echo = TRUE}
+write_csv(invertebrate.data, file = "data/NRSA-invertebrates-rel_abund.25.csv")
+# File name indicates that the abundance is from a relative abundance > 0.25%
+```
+
+
+
+
+
+\newpage
+# R Session Information
+
+```{r R Packages, echo = FALSE}
+df_session_packages <- devtools::session_info()$packages %>% 
+  as.data.frame(.) %>% 
+  filter(attached == TRUE) %>% 
+  dplyr::select(loadedversion, date) %>% 
+  rownames_to_column
+
+colnames(df_session_packages) <- c("Package", "Loaded Version", "Date")
+
+kable(
+  df_session_packages, 
+  booktabs = TRUE,
+  caption = "Packages required for data management."
+  ) %>%
+	kable_styling(
+		full_width = FALSE,
+  	latex_options = c("HOLD_position", "striped")
+  	) 
+```
+
