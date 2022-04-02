@@ -1,8 +1,8 @@
 # NRSA-DisEQ
 
-Data, code, and metadata for the manuscript"
+Data, code, and metadata for the manuscript:
 
-Murray-Stoker, David, Kelly M. Murray-Stoker, Fan Pen Kong, and Fathima Amanat. Environmental filtering and habitat matching of riverine invertebrate metacommunities.
+Murray-Stoker, David, Kelly M. Murray-Stoker, Fan Peng Kong, and Fathima Amanat. Environmental filtering and habitat matching of riverine invertebrate metacommunities.
 
 
 [![DOI](https://zenodo.org/badge/476883723.svg)](https://zenodo.org/badge/latestdoi/476883723)
