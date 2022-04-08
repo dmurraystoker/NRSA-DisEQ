@@ -1,5 +1,5 @@
 ---
-title: "Environmental filtering and niche mismatching of riverine invertebrate communities"
+title: "Environmental filtering and habitat (mis)matching of riverine invertebrate communities"
 subtitle: "NRSA DisEQ-Predictor Variable Summary Tables"
 output:
   pdf_document:
