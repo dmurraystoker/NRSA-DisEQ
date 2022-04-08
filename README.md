@@ -34,9 +34,9 @@ The [R Project](https://github.com/dmurraystoker/NRSA-DisEQ/blob/main/NRSA-DisEQ
 All processed data are provided in the [data folder](https://github.com/dmurraystoker/NRSA-DisEQ/tree/main/data), Metadata are provided [here](https://github.com/dmurraystoker/NRSA-DisEQ/blob/main/metadata.md).
 
 
-### R Code & Data Analysis Summary Reports
+### Code & Data Analysis Summary Reports
 
-All analytical code and summary reports are provided in the [data analysis folder](https://github.com/dmurraystoker/NRSA-DisEQ/tree/main/data_analysis). We also provide summary reports to aid in the evaluation of results, with code chunks echoing the data management and analyses
+All analytical code (R Markdown) and summary reports are provided in the [data analysis folder](https://github.com/dmurraystoker/NRSA-DisEQ/tree/main/data_analysis). We also provide summary reports to aid in the evaluation of results, with code chunks echoing the data management and analyses
 
 We first processed the raw invertebrate data into a workable dataset using the [0-data_management.Rmd](https://github.com/dmurraystoker/NRSA-DisEQ/blob/main/data_analysis/0-data_management/0-data_management.Rmd). 
 
@@ -58,9 +58,4 @@ To use the data and R code for this project:
 2. Open `R Studio`, go to `file > Open project` and open the `NRSA-DisEQ.Rproj` R Project associated with this repository
 
 3. Analyses can be done using code in the [data analysis folder](https://github.com/dmurraystoker/OGC-biomass/tree/main/data_analysis)
-
-
-
-
-
 
