@@ -57,5 +57,5 @@ To use the data and R code for this project:
 
 2. Open `R Studio`, go to `file > Open project` and open the `NRSA-DisEQ.Rproj` R Project associated with this repository
 
-3. Analyses can be done using code in the [data analysis folder](https://github.com/dmurraystoker/OGC-biomass/tree/main/data_analysis)
+3. Analyses can be done using code in the [data analysis folder](https://github.com/dmurraystoker/NRSA-DisEQ/tree/main/data_analysis)
 
