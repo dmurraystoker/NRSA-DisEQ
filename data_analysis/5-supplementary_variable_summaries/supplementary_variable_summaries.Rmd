@@ -1,0 +1,426 @@
+---
+title: "Environmental filtering and habitat (mis)matching of riverine invertebrate communities"
+subtitle: "NRSA DisEQ-Predictor Variable Summary Tables"
+output:
+  pdf_document:
+    fig_caption: yes
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(results = "hold", fig.pos = "H", fig.align = "center", out.width = "92.5%")
+options(knitr.graphics.error = FALSE)
+kableExtra::usepackage_latex("float")
+```
+
+```{r Load Package for R Markdown, include = FALSE}
+library(kableExtra)
+library(knitr)
+```
+
+```{r Load Packages & Data, include = FALSE}
+library(tidyverse)
+
+## Load the reduced workspace
+load("data_analysis/2-DisEQ_analyses/DisEQ_analyses-Reduced_Workspace.RData")
+```
+
+
+\newpage
+# Environmental Variable Summaries
+
+Supplemental tables with summaries (i.e., mean and standard deviation) for each variable within the environmental category.
+
+List of environmental variables:
+
++ total N
++ total P
++ Dissolved organic carbon (DOC)
++ Large Woody Debris in reach (LWD)
++ Natural (NAT) cover
++ Algal (ALG) cover
++ Aquatic macrophyte (AQM) cover
+
+
+```{r Numerical Summaries: Environmental Variables, include = FALSE}
+## Total N
+total.N.summary <- final.DisEQ.data %>%
+	select(ecoregion, total.N) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(total.N), SD = sd(total.N))
+
+## Total P
+total.P.summary <- final.DisEQ.data %>%
+	select(ecoregion, total.P) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(total.P), SD = sd(total.P))
+
+## DOC
+DOC.summary <- final.DisEQ.data %>%
+	select(ecoregion, DOC) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(DOC), SD = sd(DOC))
+
+## LWD Reach
+LWD.reach.summary <- final.DisEQ.data %>%
+	select(ecoregion, LWD.reach) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(LWD.reach), SD = sd(LWD.reach))
+
+## NAT Cover
+NAT.cover.summary <- final.DisEQ.data %>%
+	select(ecoregion, NAT.cover) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(NAT.cover), SD = sd(NAT.cover))
+
+## ALG Cover
+ALG.cover.summary <- final.DisEQ.data %>%
+	select(ecoregion, ALG.cover) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(ALG.cover), SD = sd(ALG.cover))
+
+## AQM Cover
+AQM.cover.summary <- final.DisEQ.data %>%
+	select(ecoregion, AQM.cover) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(AQM.cover), SD = sd(AQM.cover))
+```
+
+
+```{r Total N Summary, echo = FALSE}
+kable(
+	total.N.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of total N by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r Total P Summary, echo = FALSE}
+kable(
+	total.P.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of total P by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r DOC Summary, echo = FALSE}
+kable(
+	DOC.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of DOC by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r LWD Summary, echo = FALSE}
+kable(
+	LWD.reach.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of LWD by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r NAT Cover Summary, echo = FALSE}
+kable(
+	NAT.cover.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of NAT cover by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r ALG Cover Summary, echo = FALSE}
+kable(
+	ALG.cover.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of ALG cover by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r AQM Cover Summary, echo = FALSE}
+kable(
+	AQM.cover.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of AQM cover by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+
+\newpage
+# Landscape Variable Summaries
+
+Supplemental tables with summaries (i.e., mean and standard deviation) for each variable within the landscape category.
+
+List of landscape variables:
+
++ % forested land cover
++ % agricultural land cover
++ % urban land cover
++ % impervious surface land cover
+
+
+```{r Numerical Summaries: Landscape Variables, include = FALSE}
+## % Forested
+pct.for.summary <- final.DisEQ.data %>%
+	select(ecoregion, pct.for) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(pct.for), SD = sd(pct.for))
+
+## % Agricultural
+pct.ag.summary <- final.DisEQ.data %>%
+	select(ecoregion, pct.ag) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(pct.ag), SD = sd(pct.ag))
+
+## % Urban
+pct.urb.summary <- final.DisEQ.data %>%
+	select(ecoregion, pct.urb) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(pct.urb), SD = sd(pct.urb))
+
+## % Impervious Surface Cover
+pct.ISC.summary <- final.DisEQ.data %>%
+	select(ecoregion, pct.ISC) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(pct.ISC), SD = sd(pct.ISC))
+```
+
+
+```{r Forested Land Cover Summary, echo = FALSE}
+kable(
+	pct.for.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of \\% forested land cover by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r Agricultural Land Cover Summary, echo = FALSE}
+kable(
+	pct.ag.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of \\% agricultural land cover by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r Urban Land Cover Summary, echo = FALSE}
+kable(
+	pct.urb.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of \\% urban land cover by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r ISC Land Cover Summary, echo = FALSE}
+kable(
+	pct.ISC.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of \\% impervious surface land cover by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+
+\newpage
+# Network Variable Summaries
+
+Supplemental tables with summaries (i.e., mean and standard deviation) for each variable within the network category.
+
+List of network variables:
+
++ Site latitude
++ Site longitude
++ Basin area
++ Mean annual flow
++ Mean basin elevation
++ Range basin elevation
++ Site centrality
+
+
+```{r Numerical Summaries: Network Variables, include = FALSE}
+## Latitude
+site.lat.summary <- final.DisEQ.data %>%
+	select(ecoregion, site.lat) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(site.lat), SD = sd(site.lat))
+
+## Longitude
+site.long.summary <- final.DisEQ.data %>%
+	select(ecoregion, site.long) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(site.long), SD = sd(site.long))
+
+## Basin Area
+basin.area.summary <- final.DisEQ.data %>%
+	select(ecoregion, basin.area) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(basin.area), SD = sd(basin.area))
+
+## Mean Annual Flow
+mean.annual.flow.summary <- final.DisEQ.data %>%
+	select(ecoregion, mean.annual.flow) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(mean.annual.flow), SD = sd(mean.annual.flow))
+
+## Mean Basin Elevation
+mean.basin.elevation.summary <- final.DisEQ.data %>%
+	select(ecoregion, mean.basin.elevation) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(mean.basin.elevation), SD = sd(mean.basin.elevation))
+
+## Range Basin Elevation
+range.basin.elevation.summary <- final.DisEQ.data %>%
+	select(ecoregion, range.basin.elevation) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(range.basin.elevation), SD = sd(range.basin.elevation))
+
+## Site Centrality
+site.centrality.summary <- final.DisEQ.data %>%
+	select(ecoregion, site.centrality) %>%
+	group_by(ecoregion) %>%
+	summarise(Mean = mean(site.centrality), SD = sd(site.centrality))
+```
+
+
+```{r Latitude Summary, echo = FALSE}
+kable(
+	site.lat.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of latitude by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r Longitude Summary, echo = FALSE}
+kable(
+	site.long.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of longitude by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r Basin Area Summary, echo = FALSE}
+kable(
+	basin.area.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of basin area by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r Mean Annual Flow Summary, echo = FALSE}
+kable(
+	mean.annual.flow.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of mean annual flow by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r Mean Basin Elevation Summary, echo = FALSE}
+kable(
+	mean.basin.elevation.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of mean basin elevation by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r Range Basin Elevation Summary, echo = FALSE}
+kable(
+	range.basin.elevation.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of range basin elevation by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+\vspace{10pt}
+
+```{r Site Centrality Summary, echo = FALSE}
+kable(
+	site.centrality.summary,
+	booktabs = TRUE,
+	digits = 2,
+	col.names = c("Ecoregion", "Mean", "SD"),
+	caption = "Summary of site centrality by ecoregion."
+	) %>% 
+	kable_styling(latex_options = c("HOLD_position", "striped"))
+```
+
+
+
+
