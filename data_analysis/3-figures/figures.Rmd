@@ -45,6 +45,8 @@ library(rgdal)
 load("data_analysis/2-DisEQ_analyses/DisEQ_analyses-Reduced_Workspace.RData")
 ```
 
+\newpage
+
 ```{r Set X-Axis Orders, echo = TRUE}
 ## Reorder trait variables for plotting
 trait.axis.limits <- c(
@@ -55,7 +57,7 @@ trait.axis.limits <- c(
 	"cold", "cool.warm", "warm",
 	"sensitive", "medium", "tolerant",
 	"CG", "CF", "HB", "PR"
-)
+	)
 
 ## Rename trait variables for plotting
 trait.axis.labels <- c(
@@ -67,8 +69,17 @@ trait.axis.labels <- c(
 	"cold" = "Cold", "cool.warm" = "Cool-Warm", "warm" = "Warm",
 	"sensitive" = "Sensitive", "medium" = "Intermediate", "tolerant" = "Tolerant",
 	"CG" = "CG", "CF" = "CF", "HB" = "HB", "PR" = "PR"
-)
+	)
+
+## Ecoregion labels (remove acronyms)
+ecoregion.labels <- c(
+	"CPL" = "Coastal Plain", "NAP" = "Northern Appalachians", "NPL" = "Northern Plains",
+	"SAP" = "Southern Appalachians", "SPL" = "Southern Plains", "TPL" = "Temperate Plains",
+	"UMW" = "Upper Midwest", "WMT" = "Western Mountains", "XER" = "Xeric"
+	)
 ```
+
+\newpage
 
 ```{r Set Colour Palettes, echo = TRUE}
 ## Ecoregion--------------------------------------------------------------#
@@ -81,7 +92,7 @@ viridis.continuous <- viridis(n = 9)
 # Set the ecoregion palette
 viridis.ecoregion <- viridis.continuous[c(9, 7, 3, 8, 4, 5, 6, 1, 2)]
 
-# Current alphabetical
+# Alphabetical --> Geographical
 # CPL (1-9), NAP (2-7), NPL (3-3), SAP (4-8), SPL (5-4), TPL (6-5), UMW (7-6), WMT (8-1), XER (9-2)
 
 # Reordered
@@ -214,7 +225,9 @@ DisEQ.figure <- ggerrorplot(
 		ncol = 1,
 		scales = "free_y"
 	) +
-	scale_x_discrete(limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL")) +
+	scale_x_discrete(limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL"),
+									 labels = ecoregion.labels) +
+	rotate_x_text(angle = 45) +
 	geom_hline(yintercept = 0, linetype = 3, size = 1, colour = "gray20") +
 	font("xlab", size = 16, color = "gray0") +
 	font("ylab", size = 16, color = "gray0") +
@@ -275,7 +288,9 @@ vector.component.figure <- ggerrorplot(
 		ncol = 2,
 		scales = "free_y"
 	) +
-	scale_x_discrete(limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL")) +
+	scale_x_discrete(limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL"),
+									 labels = ecoregion.labels) +
+	rotate_x_text(angle = 60) +
 	font("xlab", size = 16, color = "gray0") +
 	font("ylab", size = 16, color = "gray0") +
 	font("xy.text", size = 12, color = "gray20")
@@ -287,8 +302,8 @@ ggsave("figure_S1-vector_components-base.pdf",
 			 plot = vector.component.figure, 
 			 device = "pdf",
 			 path = "figures/base/",
-			 width = 10, 
-			 height = 7.5,
+			 width = 12, 
+			 height = 9,
 			 units = "in", 
 			 dpi = 900)
 ```
@@ -336,7 +351,9 @@ trait.diversity.figure <- ggerrorplot(
 		ncol = 2,
 		scales = "free_y"
 	) +
-	scale_x_discrete(limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL")) +
+	scale_x_discrete(limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL"),
+									 labels = ecoregion.labels) +
+	rotate_x_text(angle = 60) +
 	font("xlab", size = 16, color = "gray0") +
 	font("ylab", size = 16, color = "gray0") +
 	font("xy.text", size = 12, color = "gray20")
@@ -348,8 +365,8 @@ ggsave("figure_3-trait_diversity-base.pdf",
 			 plot = trait.diversity.figure, 
 			 device = "pdf",
 			 path = "figures/base/",
-			 width = 10, 
-			 height = 7.5,
+			 width = 12, 
+			 height = 9,
 			 units = "in", 
 			 dpi = 900)
 ```
