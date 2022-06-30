@@ -135,7 +135,7 @@ plasma.environmental.predictors <- plasma.continuous[c(1, 9, 14)]
 ## Reorder ecoregions for plotting
 final.data$ecoregion <- fct_relevel(
 	final.data$ecoregion,
-	c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL")
+	levels = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL")
 	)
 
 ## Set base projection and site locations
@@ -184,16 +184,16 @@ ggsave("figure_1-site_map-base.pdf",
 ```
 
 ```{r View the Site Map, echo = FALSE, fig.cap = "Map of all 1078 sites included in the study."}
-knitr::include_graphics(paste0(getwd(), "/figures/base/figure_1-site_map-base.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_1-site_map-edited.pdf"))
 ```
 
 
 
 \newpage
-# Filtering & Niche Mismatch ANOVAs
+# Filtering & Habitat Matching ANOVAs
 
-```{r Filtering & Niche Mismatch Data Management, echo = TRUE}
-## Filtering and niche mismatch data management for plotting
+```{r Filtering & Habitat Matching Data Management, echo = TRUE}
+## Filtering and habitat matching data management for plotting
 DisEQ.data.wide <- final.DisEQ.data %>%
 	select(ecoregion, filtering.scaled, mismatch.scaled)
 
@@ -202,7 +202,7 @@ DisEQ.data.long <- DisEQ.data.wide %>%
 	na.omit()
 ```
 
-```{r Filtering & Niche Mismatch, echo = TRUE}
+```{r Filtering & Habitat Matching, echo = TRUE}
 DisEQ.figure <- ggerrorplot(
 	data = DisEQ.data.long,
 	x = "ecoregion",
@@ -234,7 +234,7 @@ DisEQ.figure <- ggerrorplot(
 	font("xy.text", size = 12, color = "gray20")
 ```
 
-```{r Save the Filtering & Niche Mismatch Figure, include = FALSE}
+```{r Save the Filtering & Habitat Matching Figure, include = FALSE}
 ## Export the figure
 ggsave("figure_2-filtering_mismatch_ANOVAs-base.pdf", 
 			 plot = DisEQ.figure, 
@@ -247,8 +247,8 @@ ggsave("figure_2-filtering_mismatch_ANOVAs-base.pdf",
 ```
 
 \newpage
-```{r View the Filtering & Niche Mismatch Figure, echo = FALSE, fig.cap = "Plots of environmental filtering and niche mismatch by ecoregion."}
-knitr::include_graphics(paste0(getwd(), "/figures/base/figure_2-filtering_mismatch_ANOVAs-base.pdf"))
+```{r View the Filtering & Habitat Matching Figure, echo = FALSE, fig.cap = "Plots of environmental filtering and habitat matching by ecoregion."}
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_2-filtering_mismatch_ANOVAs-edited.pdf"))
 ```
 
 
@@ -264,6 +264,12 @@ vector.component.wide <- final.DisEQ.data %>%
 vector.component.long <- vector.component.wide %>%
 	pivot_longer(!ecoregion, names_to = "vector.component", values_to = "measurement") %>%
 	na.omit()
+
+## Re-order variables for the facet plots
+vector.component.long$vector.component <- fct_relevel(
+	vector.component.long$vector.component,
+	levels = c("Tmax.direction", "Tmin.direction", "pH.direction", "cond.direction")
+	)
 ```
 
 ```{r Habitat Matching & Mismatch Vector Component Figure, echo = TRUE}
@@ -277,7 +283,7 @@ vector.component.figure <- ggerrorplot(
 	color = "ecoregion",
 	xlab = "Ecoregion",
 	ylab = "Measurement",
-	title = "Vector Component",
+	title = "Vector Components",
 	palette = viridis.ecoregion,
 	add = "boxplot",
 	ggtheme = theme_pubr(),
@@ -310,7 +316,7 @@ ggsave("figure_S1-vector_components-base.pdf",
 
 \newpage
 ```{r View the Matching & Mismatch Vector Component Figure, echo = FALSE, fig.cap = "Plots of vector components of habitat matching and mismatch."}
-knitr::include_graphics(paste0(getwd(), "/figures/base/figure_S1-vector_components-base.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S1-vector_components-edited.pdf"))
 ```
 
 
@@ -373,7 +379,7 @@ ggsave("figure_3-trait_diversity-base.pdf",
 
 \newpage
 ```{r View the Trait Diversity Figure, echo = FALSE, fig.cap = "Plots of FRic, FEve, FDiv, and FDis by ecoregion."}
-knitr::include_graphics(paste0(getwd(), "/figures/base/figure_3-trait_diversity-base.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_3-trait_diversity-edited.pdf"))
 ```
 
 
@@ -387,7 +393,7 @@ knitr::include_graphics(paste0(getwd(), "/figures/base/figure_3-trait_diversity-
 ## Re-order ecoregion for facet plots
 filtering.by.trait.BRT.results$ecoregion <- fct_relevel(
 	filtering.by.trait.BRT.results$ecoregion,
-	c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL")
+	levels = c("WMT", "UMW", "NAP", "XER", "NPL", "SAP", "SPL", "TPL", "CPL")
 	)
 ```
 
@@ -431,7 +437,7 @@ ggsave("figure_4-filtering_by_traits-base.pdf",
 
 \newpage
 ```{r View the Filtering-by-Traits Figure, echo = FALSE, fig.cap = "Plots of relative influence for each of 21 traits across ecoregions"}
-knitr::include_graphics(paste0(getwd(), "/figures/base/figure_4-filtering_by_traits-base.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_4-filtering_by_traits-edited.pdf"))
 ```
 
 
@@ -442,7 +448,7 @@ knitr::include_graphics(paste0(getwd(), "/figures/base/figure_4-filtering_by_tra
 ## Re-order ecoregion for facet plots
 mismatch.by.trait.BRT.results$ecoregion <- fct_relevel(
 	mismatch.by.trait.BRT.results$ecoregion,
-	c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL")
+	levels = c("WMT", "UMW", "NAP", "XER", "NPL", "SAP", "SPL", "TPL", "CPL")
 	)
 ```
 
@@ -484,7 +490,7 @@ ggsave("figure_5-mismatch_by_traits-base.pdf",
 
 \newpage
 ```{r View the Mismatch-by-Traits Figure, echo = FALSE, fig.cap = "Plots of relative influence by dispersal, ecology, and habitat traits for each of 21 traits across all 9 ecoregions"}
-knitr::include_graphics(paste0(getwd(), "/figures/base/figure_5-mismatch_by_traits-base.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_5-mismatch_by_traits-edited.pdf"))
 ```
 
 
@@ -595,7 +601,7 @@ ggsave("figure_6-traits_by_environment-base.pdf",
 
 \newpage
 ```{r View the Traits-by-Environment Figure, echo = FALSE, fig.cap = "Plots of relative influence by environmental, landscape, and network predictors for each of 21 traits across all 9 ecoregions"}
-knitr::include_graphics(paste0(getwd(), "/figures/base/figure_6-traits_by_environment-base.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_6-traits_by_environment-edited.pdf"))
 ```
 
 
@@ -711,13 +717,13 @@ ggsave("figure_S3-mismatch_by_trait_diversity-base.pdf",
 
 \newpage
 ```{r View the Filtering by Trait Diversity Figure, echo = FALSE, fig.cap = "Plots of environmental filtering against measures of functional trait diversity."}
-knitr::include_graphics(paste0(getwd(), "/figures/base/figure_S2-filtering_by_trait_diversity-base.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S2-filtering_by_trait_diversity-edited.pdf"))
 ```
 
 
 \newpage
 ```{r View the Habitat Matching by Trait Diversity Figure, echo = FALSE, fig.cap = "Plots of habitat matching against measures of functional trait diversity."}
-knitr::include_graphics(paste0(getwd(), "/figures/base/figure_S3-mismatch_by_trait_diversity-base.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S3-mismatch_by_trait_diversity-edited.pdf"))
 ```
 
 
@@ -758,7 +764,7 @@ ggsave("figure_S4-DisEQ_regression-base.pdf",
 
 \newpage
 ```{r View the DisEQ LMM Figure, echo = FALSE, fig.cap = "Plot of environmental filtering against habitat matching while controlling for the effect of ecoregion."}
-knitr::include_graphics(paste0(getwd(), "/figures/base/figure_S4-DisEQ_regression-base.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S4-DisEQ_regression-edited.pdf"))
 ```
 
 
@@ -807,7 +813,7 @@ dev.off()
 
 \newpage
 ```{r View the Community Composition Panel Figure, echo = FALSE, fig.cap = "Plot of community composition by ecoregion."}
-knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S5-community_composition.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S5-community_composition-edited.pdf"))
 ```
 
 
