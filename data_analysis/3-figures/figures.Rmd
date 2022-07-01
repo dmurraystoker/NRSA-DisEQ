@@ -304,7 +304,7 @@ vector.component.figure <- ggerrorplot(
 
 ```{r Save the Habitat Matching & Mismatch Vector Component Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_S1-vector_components-base.pdf", 
+ggsave("figure_S2-vector_components-base.pdf", 
 			 plot = vector.component.figure, 
 			 device = "pdf",
 			 path = "figures/base/",
@@ -316,7 +316,7 @@ ggsave("figure_S1-vector_components-base.pdf",
 
 \newpage
 ```{r View the Matching & Mismatch Vector Component Figure, echo = FALSE, fig.cap = "Plots of vector components of habitat matching and mismatch."}
-knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S1-vector_components-edited.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S2-vector_components-edited.pdf"))
 ```
 
 
@@ -660,7 +660,7 @@ filtering.by.trait.diversity.figure <- ggscatter(
 
 ```{r Save the Filtering by Functional Diversity Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_S2-filtering_by_trait_diversity-base.pdf", 
+ggsave("figure_S3-filtering_by_trait_diversity-base.pdf", 
 			 plot = filtering.by.trait.diversity.figure, 
 			 device = "pdf",
 			 path = "figures/base/",
@@ -704,7 +704,7 @@ mismatch.by.trait.diversity.figure <- ggscatter(
 
 ```{r Save the Habitat Matching by Functional Diversity Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_S3-mismatch_by_trait_diversity-base.pdf", 
+ggsave("figure_S4-mismatch_by_trait_diversity-base.pdf", 
 			 plot = mismatch.by.trait.diversity.figure, 
 			 device = "pdf",
 			 path = "figures/base/",
@@ -717,13 +717,13 @@ ggsave("figure_S3-mismatch_by_trait_diversity-base.pdf",
 
 \newpage
 ```{r View the Filtering by Trait Diversity Figure, echo = FALSE, fig.cap = "Plots of environmental filtering against measures of functional trait diversity."}
-knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S2-filtering_by_trait_diversity-edited.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S3-filtering_by_trait_diversity-edited.pdf"))
 ```
 
 
 \newpage
 ```{r View the Habitat Matching by Trait Diversity Figure, echo = FALSE, fig.cap = "Plots of habitat matching against measures of functional trait diversity."}
-knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S3-mismatch_by_trait_diversity-edited.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S4-mismatch_by_trait_diversity-edited.pdf"))
 ```
 
 
@@ -752,7 +752,7 @@ DisEQ.LMM.figure <- ggscatter(
 
 ```{r Save the DisEQ LMM Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_S4-DisEQ_regression-base.pdf", 
+ggsave("figure_S5-DisEQ_regression-base.pdf", 
 			 plot = DisEQ.LMM.figure, 
 			 device = "pdf",
 			 path = "figures/base/",
@@ -764,7 +764,7 @@ ggsave("figure_S4-DisEQ_regression-base.pdf",
 
 \newpage
 ```{r View the DisEQ LMM Figure, echo = FALSE, fig.cap = "Plot of environmental filtering against habitat matching while controlling for the effect of ecoregion."}
-knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S4-DisEQ_regression-edited.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S5-DisEQ_regression-edited.pdf"))
 ```
 
 
@@ -780,7 +780,7 @@ par(mfrow = c(1, 1), mar = c(5, 5, 5, 5))
 NMDS.groups <- final.data[rowSums(final.data[, 67:142]) > 0, 25]
 
 ## Set figure dimensions
-pdf("figures/base/figure_S5A-community_composition-base.pdf", width = 8, height = 6)
+pdf("figures/base/figure_S6A-community_composition-base.pdf", width = 8, height = 6)
 
 ## NMDS plot (axes 1 and 2)
 axes.1_2 <- ordiplot(BC.NMDS, choices = c(1, 2), type = "none", display = "sites",
@@ -798,7 +798,7 @@ dev.off()
 
 
 ## Set figure dimensions
-pdf("figures/base/figure_S5B-community_composition-base.pdf", width = 8, height = 6)
+pdf("figures/base/figure_S6B-community_composition-base.pdf", width = 8, height = 6)
 
 ## NMDS plot (axes 1 and 3)
 axes.1_3 <- ordiplot(BC.NMDS, choices = c(1, 3), type = "none", display = "sites",
@@ -813,7 +813,7 @@ dev.off()
 
 \newpage
 ```{r View the Community Composition Panel Figure, echo = FALSE, fig.cap = "Plot of community composition by ecoregion."}
-knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S5-community_composition-edited.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S6-community_composition-edited.pdf"))
 ```
 
 
