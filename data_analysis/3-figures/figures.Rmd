@@ -496,9 +496,9 @@ knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_5-mismatch_by_tr
 
 
 \newpage
-# Traits-by-Environment
+# Trait-by-Environment
 
-```{r Traits-by-Environment Data Management, echo = TRUE}
+```{r Trait-by-Environment Data Management, echo = TRUE}
 ## Bind all BRT results into a long dataframe for plotting
 trait.by.environment.long.bin.1 <- bind_rows(
 	low.dispersal.environment.BRT.results,
@@ -554,8 +554,8 @@ trait.by.environment.long$ecoregion <- fct_relevel(
 	)
 ```
 
-```{r Traits-by-Environment Figure, echo = TRUE}
-traits.by.environment.figure <- ggbarplot(
+```{r Trait-by-Environment Figure, echo = TRUE}
+trait.by.environment.figure <- ggbarplot(
 	data = trait.by.environment.long,
 	x = "trait",
 	y = "rel.inf",
@@ -589,8 +589,8 @@ traits.by.environment.figure <- ggbarplot(
 
 ```{r Save the Traits-by-Environment Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_6-traits_by_environment-base.pdf", 
-			 plot = traits.by.environment.figure, 
+ggsave("figure_6-trait_by_environment-base.pdf", 
+			 plot = trait.by.environment.figure, 
 			 device = "pdf",
 			 path = "figures/base/",
 			 width = 12, 
@@ -601,7 +601,7 @@ ggsave("figure_6-traits_by_environment-base.pdf",
 
 \newpage
 ```{r View the Traits-by-Environment Figure, echo = FALSE, fig.cap = "Plots of relative influence by environmental, landscape, and network predictors for each of 21 traits across all 9 ecoregions"}
-knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_6-traits_by_environment-edited.pdf"))
+knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_6-trait_by_environment-edited.pdf"))
 ```
 
 
