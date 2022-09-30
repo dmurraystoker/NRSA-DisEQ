@@ -27,7 +27,7 @@ The disequilibrium analytical framework measures the strength of environmental f
 | Metric    | Negative Values $< 0$ | Positive Values $> 0$ |
 |:---------:|:---------------------:|:---------------------:|
 | $\delta$  | Filtering 				    | Permissiveness 		 	  |
-| $\lambda$ | Matching 					    | habitat matching 						  |
+| $\lambda$ | Matching 					    | Mismatch        	    |
 
 Table: Basic interpretations of $\delta$ and $\lambda$ for the DisEQ analysis.
 
