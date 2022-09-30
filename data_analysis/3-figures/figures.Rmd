@@ -37,9 +37,10 @@ library(scales)
 library(viridis)
 
 ## Packages for the site map
-library(ggsn)
-library(mapdata)
-library(rgdal)
+library(cowplot)
+library(ggspatial)
+library(rnaturalearth)
+library(sf)
 
 ## Load the reduced workspace
 load("data_analysis/2-DisEQ_analyses/DisEQ_analyses-Reduced_Workspace.RData")
@@ -50,33 +51,33 @@ load("data_analysis/2-DisEQ_analyses/DisEQ_analyses-Reduced_Workspace.RData")
 ```{r Set X-Axis Orders, echo = TRUE}
 ## Reorder trait variables for plotting
 trait.axis.limits <- c(
-	"dispersal.low", "dispersal.high", 
-	"flying.strength.none", "flying.strength.weak", "flying.strength.strong",
-	"size.small", "size.medium", "size.large",
-	"depositional", "depositional.erosional", "erosional",
-	"cold", "cool.warm", "warm",
-	"sensitive", "medium", "tolerant",
-	"CG", "CF", "HB", "PR"
-	)
+  "dispersal.low", "dispersal.high",
+  "flying.strength.none", "flying.strength.weak", "flying.strength.strong",
+  "size.small", "size.medium", "size.large",
+  "depositional", "depositional.erosional", "erosional",
+  "cold", "cool.warm", "warm",
+  "sensitive", "medium", "tolerant",
+  "CG", "CF", "HB", "PR"
+)
 
 ## Rename trait variables for plotting
 trait.axis.labels <- c(
-	"dispersal.low" = "Low Dispersal", "dispersal.high" = "High Dispersal", 
-	"flying.strength.none" = "Nonflyer", "flying.strength.weak" = "Weak Flyer", 
-	"flying.strength.strong" = "Strong Flyer",
-	"size.small" = "Small Size", "size.medium" = "Medium Size", "size.large" = "Large Size",
-	"depositional" = "Depositional", "depositional.erosional" = "Depo-Eros", "erosional" = "Erosional",
-	"cold" = "Cold", "cool.warm" = "Cool-Warm", "warm" = "Warm",
-	"sensitive" = "Sensitive", "medium" = "Intermediate", "tolerant" = "Tolerant",
-	"CG" = "CG", "CF" = "CF", "HB" = "HB", "PR" = "PR"
-	)
+  "dispersal.low" = "Low Dispersal", "dispersal.high" = "High Dispersal",
+  "flying.strength.none" = "Nonflyer", "flying.strength.weak" = "Weak Flyer",
+  "flying.strength.strong" = "Strong Flyer",
+  "size.small" = "Small Size", "size.medium" = "Medium Size", "size.large" = "Large Size",
+  "depositional" = "Depositional", "depositional.erosional" = "Depo-Eros", "erosional" = "Erosional",
+  "cold" = "Cold", "cool.warm" = "Cool-Warm", "warm" = "Warm",
+  "sensitive" = "Sensitive", "medium" = "Intermediate", "tolerant" = "Tolerant",
+  "CG" = "CG", "CF" = "CF", "HB" = "HB", "PR" = "PR"
+)
 
 ## Ecoregion labels (remove acronyms)
 ecoregion.labels <- c(
-	"CPL" = "Coastal Plain", "NAP" = "Northern Appalachians", "NPL" = "Northern Plains",
-	"SAP" = "Southern Appalachians", "SPL" = "Southern Plains", "TPL" = "Temperate Plains",
-	"UMW" = "Upper Midwest", "WMT" = "Western Mountains", "XER" = "Xeric"
-	)
+  "CPL" = "Coastal Plain", "NAP" = "Northern Appalachians", "NPL" = "Northern Plains",
+  "SAP" = "Southern Appalachians", "SPL" = "Southern Plains", "TPL" = "Temperate Plains",
+  "UMW" = "Upper Midwest", "WMT" = "Western Mountains", "XER" = "Xeric"
+)
 ```
 
 \newpage
@@ -87,7 +88,7 @@ ecoregion.labels <- c(
 viridis.continuous <- viridis(n = 9)
 
 # View the colour palette
-#show_col(viridis.continuous)
+# show_col(viridis.continuous)
 
 # Set the ecoregion palette
 viridis.ecoregion <- viridis.continuous[c(9, 7, 3, 8, 4, 5, 6, 1, 2)]
@@ -104,7 +105,7 @@ viridis.ecoregion <- viridis.continuous[c(9, 7, 3, 8, 4, 5, 6, 1, 2)]
 magma.continuous <- magma(n = 16)
 
 # View the colour palette
-#show_col(magma.continuous)
+# show_col(magma.continuous)
 
 # Set the functional traits palette
 magma.functional.traits <- magma.continuous[c(3, 8, 13)]
@@ -115,9 +116,9 @@ magma.functional.traits <- magma.continuous[c(3, 8, 13)]
 plasma.continuous <- plasma(n = 16)
 
 # View the colour palette
-#show_col(plasma.continuous)
+# show_col(plasma.continuous)
 
-# Set the environ palette
+# Set the environment, landscape, and network variable palette
 plasma.environmental.predictors <- plasma.continuous[c(1, 9, 14)]
 ```
 
@@ -126,61 +127,83 @@ plasma.environmental.predictors <- plasma.continuous[c(1, 9, 14)]
 # Site Map
 
 ```{r Site Map, echo = TRUE}
-## Figure was created by evaluating the supplementary R code and data
-## provided by King et al. 2019 (Ecological Applications), deposited by
-## Katelyn King on Zenodo at:
-
-# https://zenodo.org/record/3246537#.XgDUKRdKhSw
-
 ## Reorder ecoregions for plotting
 final.data$ecoregion <- fct_relevel(
-	final.data$ecoregion,
-	levels = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL")
-	)
+  final.data$ecoregion,
+  levels = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL")
+)
 
-## Set base projection and site locations
-usa <- map_data("usa")  # pull out the USA map
-base.map <- ggplot(data = usa) + 
-	geom_polygon(aes(x = long, y = lat, group = group), 
-							 fill = "white", color = "black") + 
-	coord_fixed(1.3) 
-points <- select(final.data, site.long, site.lat, ecoregion)
+## Set target CRS
+target.crs <- "+proj=moll"
 
-## Add points to the US map
-site.map <- base.map +
-	geom_point(data = points, size = 2, 
-						 aes(x = site.long, y = site.lat, colour = ecoregion, shape = ecoregion)) +
-	scale_colour_manual(values =  viridis.ecoregion, name = "Ecoregion") + 
-	scale_shape_manual(values = c(0:8),  name = "Ecoregion") +
-	north(data = usa, symbol = 3, scale = 0.1, location = "bottomright", 
-				anchor = c(x = -120, y = 27)) +
-	ggsn::scalebar(data = usa, dist = 500, dist_unit = "km", transform = TRUE, model = "WGS84", 
-								 st.size = 2, location = "bottomleft") +
-	theme(panel.grid.major = element_blank(), 
-				panel.grid.minor = element_blank(),
-				axis.line.x = element_blank(), 
-				axis.title.x = element_blank(),
-				axis.ticks.x = element_blank(),
-				axis.text.x = element_blank(),
-				axis.line.y = element_blank(), 
-				axis.title.y = element_blank(),
-				axis.ticks.y = element_blank(),
-				axis.text.y = element_blank(),
-				panel.background = element_blank()) +
-	theme(legend.position = c(0.88, 0.20), legend.text = element_text(size = 9)) +
-	theme(legend.text = element_text(size = 9))
+## Set dataframe of site coordinates for plotting after CRS transformation
+site.coordinates.sf <- final.data %>%
+  select(ecoregion, site.lat, site.long) %>%
+  st_as_sf(coords = c("site.long", "site.lat"), crs = 4326) %>%
+  st_transform(crs = target.crs)
+
+## Basic continent map
+# Get all countries in North America
+base.contintent.map.data <- ne_countries(
+  scale = "large",
+  type = "countries",
+  continent = "north america",
+  returnclass = "sf"
+) %>%
+  filter(admin != "Greenland") %>%
+  st_crop(xmin = -175, xmax = -30, ymin = 2.5, ymax = 85)
+
+# Set the base projection for the continent map
+inset.continent.map <- ggplot(data = base.contintent.map.data) +
+  geom_sf(fill = "antiquewhite") +
+  coord_sf(crs = st_crs(target.crs), expand = FALSE) +
+  theme(
+    panel.grid.major = element_line(color = gray(0.5), linetype = "dashed", size = 0.5),
+    panel.background = element_rect(fill = "aliceblue")
+  ) +
+  rremove("xy.text")
+
+## Set the site map
+site.map <- ggplot(data = base.contintent.map.data %>% filter(adm0_a3 == c("CAN", "MEX", "USA"))) +
+  geom_sf(fill = "antiquewhite") +
+  coord_sf(
+    crs = st_crs(target.crs),
+    xlim = c(-11850000, -4500000), ylim = c(2000000, 6000000),
+    expand = FALSE
+  ) +
+  geom_point(
+    data = site.coordinates.sf,
+    size = 1.5, alpha = 0.5,
+    aes(colour = ecoregion, geometry = geometry),
+    stat = "sf_coordinates"
+  ) +
+  scale_colour_manual(values = viridis.ecoregion, name = "Ecoregion") +
+  annotation_scale(
+    location = "tl",
+    pad_x = unit(0.35, "in"),
+    pad_y = unit(0.45, "in")
+  ) +
+  labs(x = "Longitude", y = "Latitude") +
+  theme(
+    panel.grid.major = element_line(color = gray(0.5), linetype = "dashed", size = 0.5),
+    panel.background = element_rect(fill = "aliceblue")
+  )
+
+## Combine the inset and site map
+combined.site.map <- ggdraw(site.map) +
+  draw_plot(inset.continent.map, width = 0.325, height = 0.325, x = 0.5875, y = 0.165)
 ```
 
 ```{r Save the Site Map, include = FALSE}
-ggsave("figure_1-site_map-base.pdf", 
-			 plot = site.map, 
-			 device = "pdf",
-			 path = "figures/base/",
-			 width = 12, 
-			 height = 12,
-			 units = "in",
-			 dpi = 1000
-			 )
+ggsave("figure_1-site_map-base.pdf",
+  plot = combined.site.map,
+  device = "pdf",
+  path = "figures/base/",
+  width = 12,
+  height = 9,
+  units = "in",
+  dpi = 600
+)
 ```
 
 ```{r View the Site Map, echo = FALSE, fig.cap = "Map of all 1078 sites included in the study."}
@@ -195,55 +218,57 @@ knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_1-site_map-edite
 ```{r Filtering & Habitat Matching Data Management, echo = TRUE}
 ## Filtering and habitat matching data management for plotting
 DisEQ.data.wide <- final.DisEQ.data %>%
-	select(ecoregion, filtering.scaled, mismatch.scaled)
+  select(ecoregion, filtering.scaled, mismatch.scaled)
 
 DisEQ.data.long <- DisEQ.data.wide %>%
-	pivot_longer(!ecoregion, names_to = "DisEQ.metric", values_to = "measurement") %>%
-	na.omit()
+  pivot_longer(!ecoregion, names_to = "DisEQ.metric", values_to = "measurement") %>%
+  na.omit()
 ```
 
 ```{r Filtering & Habitat Matching, echo = TRUE}
 DisEQ.figure <- ggerrorplot(
-	data = DisEQ.data.long,
-	x = "ecoregion",
-	y = "measurement",
-	size = 1.5, 
-	width = 1.5,
-	desc_stat = "mean",
-	color = "ecoregion",
-	xlab = "Ecoregion",
-	ylab = "Measurement",
-	title = "DisEQ by Ecoregion",
-	palette = viridis.ecoregion,
-	add = "boxplot",
-	ggtheme = theme_pubr(),
-	legend = "right"
-	) %>%
-	facet(
-		facet.by = "DisEQ.metric",
-		nrow = 2,
-		ncol = 1,
-		scales = "free_y"
-	) +
-	scale_x_discrete(limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL"),
-									 labels = ecoregion.labels) +
-	rotate_x_text(angle = 45) +
-	geom_hline(yintercept = 0, linetype = 3, size = 1, colour = "gray20") +
-	font("xlab", size = 16, color = "gray0") +
-	font("ylab", size = 16, color = "gray0") +
-	font("xy.text", size = 12, color = "gray20")
+  data = DisEQ.data.long,
+  x = "ecoregion",
+  y = "measurement",
+  size = 1.5,
+  width = 1.5,
+  desc_stat = "mean",
+  color = "ecoregion",
+  xlab = "Ecoregion",
+  ylab = "Measurement",
+  palette = viridis.ecoregion,
+  add = "boxplot",
+  ggtheme = theme_pubr(),
+  legend = "top"
+) %>%
+  facet(
+    facet.by = "DisEQ.metric",
+    nrow = 2,
+    ncol = 1,
+    scales = "free_y"
+  ) +
+  scale_x_discrete(
+    limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL"),
+    labels = ecoregion.labels
+  ) +
+  rotate_x_text(angle = 45) +
+  geom_hline(yintercept = 0, linetype = 3, size = 1, colour = "gray20") +
+  font("xlab", size = 14, color = "gray0") +
+  font("ylab", size = 14, color = "gray0") +
+  font("xy.text", size = 10, color = "gray20")
 ```
 
 ```{r Save the Filtering & Habitat Matching Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_2-filtering_mismatch_ANOVAs-base.pdf", 
-			 plot = DisEQ.figure, 
-			 device = "pdf",
-			 path = "figures/base/",
-			 width = 8, 
-			 height = 6,
-			 units = "in", 
-			 dpi = 900)
+ggsave("figure_2-filtering_mismatch_ANOVAs-base.pdf",
+  plot = DisEQ.figure,
+  device = "pdf",
+  path = "figures/base/",
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = 600
+)
 ```
 
 \newpage
@@ -259,59 +284,63 @@ knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_2-filtering_mism
 ```{r Habitat Matching & Mismatch Vector Component Data Management, echo = TRUE}
 ## Vector component data management for plotting
 vector.component.wide <- final.DisEQ.data %>%
-	select(ecoregion, Tmax.direction, Tmin.direction, pH.direction, cond.direction)
+  select(ecoregion, Tmax.direction, Tmin.direction, pH.direction, cond.direction)
 
 vector.component.long <- vector.component.wide %>%
-	pivot_longer(!ecoregion, names_to = "vector.component", values_to = "measurement") %>%
-	na.omit()
+  pivot_longer(!ecoregion, names_to = "vector.component", values_to = "measurement") %>%
+  na.omit()
 
 ## Re-order variables for the facet plots
 vector.component.long$vector.component <- fct_relevel(
-	vector.component.long$vector.component,
-	levels = c("Tmax.direction", "Tmin.direction", "pH.direction", "cond.direction")
-	)
+  vector.component.long$vector.component,
+  levels = c("Tmax.direction", "Tmin.direction", "pH.direction", "cond.direction")
+)
 ```
 
 ```{r Habitat Matching & Mismatch Vector Component Figure, echo = TRUE}
 vector.component.figure <- ggerrorplot(
-	data = vector.component.long,
-	x = "ecoregion",
-	y = "measurement",
-	size = 1.5, 
-	width = 1.5,
-	desc_stat = "mean",
-	color = "ecoregion",
-	xlab = "Ecoregion",
-	ylab = "Measurement",
-	title = "Vector Components",
-	palette = viridis.ecoregion,
-	add = "boxplot",
-	ggtheme = theme_pubr(),
-	legend = "right") %>%
-	facet(
-		facet.by = "vector.component",
-		nrow = 2,
-		ncol = 2,
-		scales = "free_y"
-	) +
-	scale_x_discrete(limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL"),
-									 labels = ecoregion.labels) +
-	rotate_x_text(angle = 60) +
-	font("xlab", size = 16, color = "gray0") +
-	font("ylab", size = 16, color = "gray0") +
-	font("xy.text", size = 12, color = "gray20")
+  data = vector.component.long,
+  x = "ecoregion",
+  y = "measurement",
+  size = 1.5,
+  width = 1.5,
+  desc_stat = "mean",
+  color = "ecoregion",
+  xlab = "Ecoregion",
+  ylab = "Measurement",
+  palette = viridis.ecoregion,
+  add = "boxplot",
+  ggtheme = theme_pubr(),
+  legend = "top"
+) %>%
+  facet(
+    facet.by = "vector.component",
+    nrow = 2,
+    ncol = 2,
+    scales = "free_y"
+  ) +
+  scale_x_discrete(
+    limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL"),
+    labels = ecoregion.labels
+  ) +
+  geom_hline(yintercept = 0, linetype = 3, size = 1, colour = "gray20") +
+  rotate_x_text(angle = 45) +
+  font("xlab", size = 14, color = "gray0") +
+  font("ylab", size = 14, color = "gray0") +
+  font("xy.text", size = 10, color = "gray20")
 ```
 
 ```{r Save the Habitat Matching & Mismatch Vector Component Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_S2-vector_components-base.pdf", 
-			 plot = vector.component.figure, 
-			 device = "pdf",
-			 path = "figures/base/",
-			 width = 12, 
-			 height = 9,
-			 units = "in", 
-			 dpi = 900)
+ggsave("figure_S2-vector_components-base.pdf",
+  plot = vector.component.figure,
+  device = "pdf",
+  path = "figures/base/",
+  width = 12,
+  height = 9,
+  units = "in",
+  dpi = 600
+)
 ```
 
 \newpage
@@ -327,54 +356,62 @@ knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S2-vector_compon
 ```{r Trait Diversity Data Management, echo = TRUE}
 ## Trait diversity data management for plotting
 trait.diversity.wide <- final.DisEQ.data %>%
-	select(ecoregion, FRic, FEve, FDiv, FDis)
+  select(ecoregion, FRic, FEve, FDiv, FDis)
 
-trait.diversity.long <- trait.diversity.wide%>%
-	pivot_longer(!ecoregion, names_to = "diversity.measure", values_to = "measurement") %>%
-	na.omit()
+trait.diversity.long <- trait.diversity.wide %>%
+  pivot_longer(!ecoregion, names_to = "diversity.measure", values_to = "measurement") %>%
+  na.omit()
+
+## Re-order variables for the facet plots
+trait.diversity.long$diversity.measure <- fct_relevel(
+  trait.diversity.long$diversity.measure,
+  levels = c("FRic", "FEve", "FDiv", "FDis")
+)
 ```
 
 ```{r Trait Diversity Figure, echo = TRUE}
 trait.diversity.figure <- ggerrorplot(
-	data = trait.diversity.long,
-	x = "ecoregion",
-	y = "measurement",
-	size = 1.5, 
-	width = 1.5,
-	desc_stat = "mean",
-	color = "ecoregion",
-	xlab = "Ecoregion",
-	ylab = "Measurement",
-	title = "Trait Diversity",
-	palette = viridis.ecoregion,
-	add = "boxplot",
-	ggtheme = theme_pubr(),
-	legend = "right"
-	) %>%
-	facet(
-		facet.by = "diversity.measure",
-		nrow = 2,
-		ncol = 2,
-		scales = "free_y"
-	) +
-	scale_x_discrete(limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL"),
-									 labels = ecoregion.labels) +
-	rotate_x_text(angle = 60) +
-	font("xlab", size = 16, color = "gray0") +
-	font("ylab", size = 16, color = "gray0") +
-	font("xy.text", size = 12, color = "gray20")
+  data = trait.diversity.long,
+  x = "ecoregion",
+  y = "measurement",
+  size = 1.5,
+  width = 1.5,
+  desc_stat = "mean",
+  color = "ecoregion",
+  xlab = "Ecoregion",
+  ylab = "Trait Diversity Measurement",
+  palette = viridis.ecoregion,
+  add = "boxplot",
+  ggtheme = theme_pubr(),
+  legend = "top"
+) %>%
+  facet(
+    facet.by = "diversity.measure",
+    nrow = 4,
+    ncol = 1,
+    scales = "free_y"
+  ) +
+  scale_x_discrete(
+    limits = c("WMT", "XER", "NPL", "SPL", "TPL", "UMW", "NAP", "SAP", "CPL"),
+    labels = ecoregion.labels
+  ) +
+  rotate_x_text(angle = 45) +
+  font("xlab", size = 14, color = "gray0") +
+  font("ylab", size = 14, color = "gray0") +
+  font("xy.text", size = 10, color = "gray20")
 ```
 
 ```{r Save the Trait Diversity Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_3-trait_diversity-base.pdf", 
-			 plot = trait.diversity.figure, 
-			 device = "pdf",
-			 path = "figures/base/",
-			 width = 12, 
-			 height = 9,
-			 units = "in", 
-			 dpi = 900)
+ggsave("figure_3-trait_diversity-base.pdf",
+  plot = trait.diversity.figure,
+  device = "pdf",
+  path = "figures/base/",
+  width = 6,
+  height = 12,
+  units = "in",
+  dpi = 600
+)
 ```
 
 \newpage
@@ -392,47 +429,47 @@ knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_3-trait_diversit
 ```{r Filtering-by-Traits Data Management, echo = TRUE}
 ## Re-order ecoregion for facet plots
 filtering.by.trait.BRT.results$ecoregion <- fct_relevel(
-	filtering.by.trait.BRT.results$ecoregion,
-	levels = c("WMT", "UMW", "NAP", "XER", "NPL", "SAP", "SPL", "TPL", "CPL")
-	)
+  filtering.by.trait.BRT.results$ecoregion,
+  levels = c("WMT", "UMW", "NAP", "XER", "NPL", "SAP", "SPL", "TPL", "CPL")
+)
 ```
 
 ```{r Filtering-by-Traits Figure, echo = TRUE}
 filtering.by.traits.figure <- ggbarplot(
-	data = filtering.by.trait.BRT.results,
-	x = "var",
-	y = "rel.inf",
-	fill = "predictor.type",
-	xlab = "Trait",
-	ylab = "Relative Influence",
-	title = "Filtering by Traits",
-	facet.by = "ecoregion",
-	palette = magma.functional.traits,
-	ggtheme = theme_pubr(),
-	legend = "right"
-	) +
-	scale_x_discrete(
-		limits = trait.axis.limits,
-		labels = trait.axis.labels
-		) +
-	scale_y_continuous(breaks = c(0, 5, 10), limits = c(0, 11.25)) +
-	rotate_x_text(angle = 90) +
-	geom_hline(yintercept = 5, linetype = 3, size = 1, colour = "gray20") +
-	font("xlab", size = 16, color = "gray0") +
-	font("ylab", size = 16, color = "gray0") +
-	font("xy.text", size = 12, color = "gray20")
+  data = filtering.by.trait.BRT.results,
+  x = "var",
+  y = "rel.inf",
+  fill = "predictor.type",
+  xlab = "Trait",
+  ylab = "Relative Influence",
+  facet.by = "ecoregion",
+  palette = magma.functional.traits,
+  ggtheme = theme_pubr(),
+  legend = "top"
+) +
+  scale_x_discrete(
+    limits = trait.axis.limits,
+    labels = trait.axis.labels
+  ) +
+  scale_y_continuous(breaks = c(0, 5, 10), limits = c(0, 11.25)) +
+  rotate_x_text(angle = 90) +
+  geom_hline(yintercept = 5, linetype = 3, size = 1, colour = "gray20") +
+  font("xlab", size = 14, color = "gray0") +
+  font("ylab", size = 14, color = "gray0") +
+  font("xy.text", size = 10, color = "gray20")
 ```
 
 ```{r Save the Filtering-by-Traits Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_4-filtering_by_traits-base.pdf", 
-			 plot = filtering.by.traits.figure, 
-			 device = "pdf",
-			 path = "figures/base/",
-			 width = 12, 
-			 height = 12,
-			 units = "in", 
-			 dpi = 900)
+ggsave("figure_4-filtering_by_traits-base.pdf",
+  plot = filtering.by.traits.figure,
+  device = "pdf",
+  path = "figures/base/",
+  width = 12,
+  height = 12,
+  units = "in",
+  dpi = 600
+)
 ```
 
 \newpage
@@ -447,45 +484,46 @@ knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_4-filtering_by_t
 ```{r Mismatch-by-Traits Data Management, echo = TRUE}
 ## Re-order ecoregion for facet plots
 mismatch.by.trait.BRT.results$ecoregion <- fct_relevel(
-	mismatch.by.trait.BRT.results$ecoregion,
-	levels = c("WMT", "UMW", "NAP", "XER", "NPL", "SAP", "SPL", "TPL", "CPL")
-	)
+  mismatch.by.trait.BRT.results$ecoregion,
+  levels = c("WMT", "UMW", "NAP", "XER", "NPL", "SAP", "SPL", "TPL", "CPL")
+)
 ```
 
 ```{r Mismatch-by-Traits Figure, echo = TRUE}
 mismatch.by.traits.figure <- ggbarplot(
-	data = mismatch.by.trait.BRT.results,
-	x = "var",
-	y = "rel.inf",
-	fill = "predictor.type",
-	xlab = "Trait",
-	ylab = "Relative Influence",
-	title = "Habitat Matching by Traits",
-	facet.by = "ecoregion",
-	palette = magma.functional.traits,
-	ggtheme = theme_pubr(),
-	legend = "right"
-	) +
-	scale_x_discrete(
-		limits = trait.axis.limits,
-		labels = trait.axis.labels) +
-	rotate_x_text(angle = 90) +
-	geom_hline(yintercept = 5, linetype = 3, size = 1, colour = "gray20") +
-	font("xlab", size = 16, color = "gray0") +
-	font("ylab", size = 16, color = "gray0") +
-	font("xy.text", size = 12, color = "gray20")
+  data = mismatch.by.trait.BRT.results,
+  x = "var",
+  y = "rel.inf",
+  fill = "predictor.type",
+  xlab = "Trait",
+  ylab = "Relative Influence",
+  facet.by = "ecoregion",
+  palette = magma.functional.traits,
+  ggtheme = theme_pubr(),
+  legend = "top"
+) +
+  scale_x_discrete(
+    limits = trait.axis.limits,
+    labels = trait.axis.labels
+  ) +
+  rotate_x_text(angle = 90) +
+  geom_hline(yintercept = 5, linetype = 3, size = 1, colour = "gray20") +
+  font("xlab", size = 14, color = "gray0") +
+  font("ylab", size = 14, color = "gray0") +
+  font("xy.text", size = 10, color = "gray20")
 ```
 
 ```{r Save the Mismatch-by-Traits Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_5-mismatch_by_traits-base.pdf", 
-			 plot = mismatch.by.traits.figure, 
-			 device = "pdf",
-			 path = "figures/base/",
-			 width = 12, 
-			 height = 12,
-			 units = "in", 
-			 dpi = 900)
+ggsave("figure_5-mismatch_by_traits-base.pdf",
+  plot = mismatch.by.traits.figure,
+  device = "pdf",
+  path = "figures/base/",
+  width = 12,
+  height = 12,
+  units = "in",
+  dpi = 600
+)
 ```
 
 \newpage
@@ -501,102 +539,106 @@ knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_5-mismatch_by_tr
 ```{r Trait-by-Environment Data Management, echo = TRUE}
 ## Bind all BRT results into a long dataframe for plotting
 trait.by.environment.long.bin.1 <- bind_rows(
-	low.dispersal.environment.BRT.results,
-	high.dispersal.environment.BRT.results,
-	nonflyer.environment.BRT.results,
-	weak.flyer.environment.BRT.results,
-	strong.flyer.environment.BRT.results,
-	small.size.environment.BRT.results,
-	medium.size.environment.BRT.results,
-	large.size.environment.BRT.results,
-	depositional.environment.BRT.results,
-	depositional.erosional.environment.BRT.results,
-	erosional.environment.BRT.results,
-	cold.water.environment.BRT.results,
-	cool.warm.water.environment.BRT.results,
-	warm.water.environment.BRT.results,
-	sensitive.tolerance.environment.BRT.results,
-	intermediate.tolerance.environment.BRT.results,
-	tolerant.environment.BRT.results,
-	CG.environment.BRT.results,
-	CF.environment.BRT.results,
-	HB.environment.BRT.results,
-	PR.environment.BRT.results
-	)
+  low.dispersal.environment.BRT.results,
+  high.dispersal.environment.BRT.results,
+  nonflyer.environment.BRT.results,
+  weak.flyer.environment.BRT.results,
+  strong.flyer.environment.BRT.results,
+  small.size.environment.BRT.results,
+  medium.size.environment.BRT.results,
+  large.size.environment.BRT.results,
+  depositional.environment.BRT.results,
+  depositional.erosional.environment.BRT.results,
+  erosional.environment.BRT.results,
+  cold.water.environment.BRT.results,
+  cool.warm.water.environment.BRT.results,
+  warm.water.environment.BRT.results,
+  sensitive.tolerance.environment.BRT.results,
+  intermediate.tolerance.environment.BRT.results,
+  tolerant.environment.BRT.results,
+  CG.environment.BRT.results,
+  CF.environment.BRT.results,
+  HB.environment.BRT.results,
+  PR.environment.BRT.results
+)
 
 ## Add trait vector to the dataframe
 trait.by.environment.long.bin.1$trait <- rep(
-	c("Low Dispersal", "High Dispersal",
-		"Nonflyer", "Weak Flyer", "Strong Flyer",
-		"Small Size", "Medium Size", "Large Size",
-		"Depositional", "Depo-Eros", "Erosional",
-		"Cold", "Cool-Warm", "Warm",
-		"Sensitive", "Intermediate", "Tolerant",
-		"CG", "CF", "HB", "PR"),
-	each = 162
-	)
+  c(
+    "Low Dispersal", "High Dispersal",
+    "Nonflyer", "Weak Flyer", "Strong Flyer",
+    "Small Size", "Medium Size", "Large Size",
+    "Depositional", "Depo-Eros", "Erosional",
+    "Cold", "Cool-Warm", "Warm",
+    "Sensitive", "Intermediate", "Tolerant",
+    "CG", "CF", "HB", "PR"
+  ),
+  each = 162
+)
 
 ## Filter predictors with relative influence < 5.00
 trait.by.environment.long.bin.2 <- trait.by.environment.long.bin.1 %>%
-	filter(rel.inf > 5.00)
+  filter(rel.inf > 5.00)
 
 ## Sum relative influence by predictor type and ecoregion for each trait
 trait.by.environment.long <- aggregate(
-	rel.inf ~ trait + ecoregion + predictor.type,
-	data = trait.by.environment.long.bin.2,
-	FUN = sum
-	)
+  rel.inf ~ trait + ecoregion + predictor.type,
+  data = trait.by.environment.long.bin.2,
+  FUN = sum
+)
 
 ## Re-order ecoregion for facet plots
 trait.by.environment.long$ecoregion <- fct_relevel(
-	trait.by.environment.long$ecoregion,
-	levels = c("WMT", "UMW", "NAP", "XER", "NPL", "SAP", "SPL", "TPL", "CPL")
-	)
+  trait.by.environment.long$ecoregion,
+  levels = c("WMT", "UMW", "NAP", "XER", "NPL", "SAP", "SPL", "TPL", "CPL")
+)
 ```
 
 ```{r Trait-by-Environment Figure, echo = TRUE}
 trait.by.environment.figure <- ggbarplot(
-	data = trait.by.environment.long,
-	x = "trait",
-	y = "rel.inf",
-	fill = "predictor.type",
-	color = "predictor.type",
-	xlab = "Trait",
-	ylab = "Relative Influence",
-	title = "Traits by Environment",
-	facet.by = "ecoregion",
-	palette = plasma.environmental.predictors,
-	ggtheme = theme_pubr(),
-	legend = "right"
-	) +
-	scale_x_discrete(
-		limits = 	c(
-			"Low Dispersal", "High Dispersal", "Nonflyer", "Weak Flyer", "Strong Flyer",
-			"Small Size", "Medium Size", "Large Size", "Depositional", "Depo-Eros", "Erosional",
-			"Cold", "Cool-Warm", "Warm", "Sensitive", "Intermediate", "Tolerant",
-			"CG", "CF", "HB", "PR"),
-		labels = c(
-			"Low Dispersal", "High Dispersal", "Nonflyer", "Weak Flyer", "Strong Flyer",
-			"Small Size", "Medium Size", "Large Size", "Depositional", "Depo-Eros", "Erosional",
-			"Cold", "Cool-Warm", "Warm", "Sensitive", "Intermediate", "Tolerant",
-			"CG", "CF", "HB", "PR")
-		) +
-	rotate_x_text(angle = 90) +
-	font("xlab", size = 16, color = "gray0") +
-	font("ylab", size = 16, color = "gray0") +
-	font("xy.text", size = 12, color = "gray20")
+  data = trait.by.environment.long,
+  x = "trait",
+  y = "rel.inf",
+  fill = "predictor.type",
+  color = "predictor.type",
+  xlab = "Trait",
+  ylab = "Relative Influence",
+  facet.by = "ecoregion",
+  palette = plasma.environmental.predictors,
+  ggtheme = theme_pubr(),
+  legend = "top"
+) +
+  scale_x_discrete(
+    limits = c(
+      "Low Dispersal", "High Dispersal", "Nonflyer", "Weak Flyer", "Strong Flyer",
+      "Small Size", "Medium Size", "Large Size", "Depositional", "Depo-Eros", "Erosional",
+      "Cold", "Cool-Warm", "Warm", "Sensitive", "Intermediate", "Tolerant",
+      "CG", "CF", "HB", "PR"
+    ),
+    labels = c(
+      "Low Dispersal", "High Dispersal", "Nonflyer", "Weak Flyer", "Strong Flyer",
+      "Small Size", "Medium Size", "Large Size", "Depositional", "Depo-Eros", "Erosional",
+      "Cold", "Cool-Warm", "Warm", "Sensitive", "Intermediate", "Tolerant",
+      "CG", "CF", "HB", "PR"
+    )
+  ) +
+  rotate_x_text(angle = 90) +
+  font("xlab", size = 14, color = "gray0") +
+  font("ylab", size = 14, color = "gray0") +
+  font("xy.text", size = 10, color = "gray20")
 ```
 
 ```{r Save the Traits-by-Environment Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_6-trait_by_environment-base.pdf", 
-			 plot = trait.by.environment.figure, 
-			 device = "pdf",
-			 path = "figures/base/",
-			 width = 12, 
-			 height = 12,
-			 units = "in", 
-			 dpi = 900)
+ggsave("figure_6-trait_by_environment-base.pdf",
+  plot = trait.by.environment.figure,
+  device = "pdf",
+  path = "figures/base/",
+  width = 12,
+  height = 12,
+  units = "in",
+  dpi = 600
+)
 ```
 
 \newpage
@@ -613,18 +655,18 @@ knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_6-trait_by_envir
 ## DisEQ and trait diversity data management
 # Wide format
 DisEQ.trait.diversity.wide <- final.DisEQ.data %>%
-	select(filtering.scaled, mismatch.scaled, ecoregion, FRic, FEve, FDiv, FDis)
+  select(filtering.scaled, mismatch.scaled, ecoregion, FRic, FEve, FDiv, FDis)
 
 # Switch from wide to long
 DisEQ.trait.diversity.long <- DisEQ.trait.diversity.wide %>%
-	pivot_longer(cols = FRic:FDis, names_to = "trait.metric", values_to = "measurement") %>%
-	na.omit()
+  pivot_longer(cols = FRic:FDis, names_to = "trait.metric", values_to = "measurement") %>%
+  na.omit()
 
 ## Reorder trait metrics for plotting
 DisEQ.trait.diversity.long$trait.metric <- fct_relevel(
-	DisEQ.trait.diversity.long$trait.metric,
-	c("FRic", "FEve", "FDiv", "FDis")
-	)
+  DisEQ.trait.diversity.long$trait.metric,
+  c("FRic", "FEve", "FDiv", "FDis")
+)
 ```
 
 
@@ -632,42 +674,43 @@ DisEQ.trait.diversity.long$trait.metric <- fct_relevel(
 
 ```{r DisEQ & Trait Diversity: Filtering Figure, echo = TRUE}
 filtering.by.trait.diversity.figure <- ggscatter(
-	data = DisEQ.trait.diversity.long,
-	x = "measurement",
-	y = "filtering.scaled",
-	size = 1,
-	color = "ecoregion",
-	xlab = "Trait Diversity",
-	ylab = "Environmental Filtering",
-	title = "Environmental Filtering by Functional Diversity",
-	palette = viridis.ecoregion,
-	ggtheme = theme_pubr(),
-	legend = "right",
-	add = "reg.line",
-	conf.int = TRUE
-	) %>%
-	facet(
-		facet.by = "trait.metric",
-		nrow = 2,
-		ncol = 2,
-		scales = "free"
-	) +
-	font("xlab", size = 16, color = "gray0") +
-	font("ylab", size = 16, color = "gray0") +
-	font("xy.text", size = 12, color = "gray20") +
-	geom_hline(yintercept = 0, linetype = 3, size = 1, colour = "gray40")
+  data = DisEQ.trait.diversity.long,
+  x = "measurement",
+  y = "filtering.scaled",
+  size = 1,
+  color = "ecoregion",
+  xlab = "Trait Diversity",
+  ylab = "Environmental Filtering",
+  title = "Environmental Filtering by Functional Diversity",
+  palette = viridis.ecoregion,
+  ggtheme = theme_pubr(),
+  legend = "top",
+  add = "reg.line",
+  conf.int = TRUE
+) %>%
+  facet(
+    facet.by = "trait.metric",
+    nrow = 2,
+    ncol = 2,
+    scales = "free"
+  ) +
+  font("xlab", size = 14, color = "gray0") +
+  font("ylab", size = 14, color = "gray0") +
+  font("xy.text", size = 10, color = "gray20") +
+  geom_hline(yintercept = 0, linetype = 3, size = 1, colour = "gray40")
 ```
 
 ```{r Save the Filtering by Functional Diversity Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_S3-filtering_by_trait_diversity-base.pdf", 
-			 plot = filtering.by.trait.diversity.figure, 
-			 device = "pdf",
-			 path = "figures/base/",
-			 width = 12, 
-			 height = 12,
-			 units = "in", 
-			 dpi = 900)
+ggsave("figure_S3-filtering_by_trait_diversity-base.pdf",
+  plot = filtering.by.trait.diversity.figure,
+  device = "pdf",
+  path = "figures/base/",
+  width = 12,
+  height = 12,
+  units = "in",
+  dpi = 600
+)
 ```
 
 
@@ -676,42 +719,43 @@ ggsave("figure_S3-filtering_by_trait_diversity-base.pdf",
 
 ```{r DisEQ & Trait Diversity: Habitat Matching Figure, echo = TRUE}
 mismatch.by.trait.diversity.figure <- ggscatter(
-	data = DisEQ.trait.diversity.long,
-	x = "measurement",
-	y = "mismatch.scaled",
-	size = 1,
-	color = "ecoregion",
-	xlab = "Trait Diversity",
-	ylab = "Habitat Matching",
-	title = "Habitat Matching by Functional Diversity",
-	palette = viridis.ecoregion,
-	ggtheme = theme_pubr(),
-	legend = "right",
-	add = "reg.line",
-	conf.int = TRUE
-	) %>%
-	facet(
-		facet.by = "trait.metric",
-		nrow = 2,
-		ncol = 2,
-		scales = "free"
-	) +
-	font("xlab", size = 16, color = "gray0") +
-	font("ylab", size = 16, color = "gray0") +
-	font("xy.text", size = 12, color = "gray20") +
-	geom_hline(yintercept = 0, linetype = 3, size = 1, colour = "gray40")
+  data = DisEQ.trait.diversity.long,
+  x = "measurement",
+  y = "mismatch.scaled",
+  size = 1,
+  color = "ecoregion",
+  xlab = "Trait Diversity",
+  ylab = "Habitat Matching",
+  title = "Habitat Matching by Functional Diversity",
+  palette = viridis.ecoregion,
+  ggtheme = theme_pubr(),
+  legend = "top",
+  add = "reg.line",
+  conf.int = TRUE
+) %>%
+  facet(
+    facet.by = "trait.metric",
+    nrow = 2,
+    ncol = 2,
+    scales = "free"
+  ) +
+  font("xlab", size = 14, color = "gray0") +
+  font("ylab", size = 14, color = "gray0") +
+  font("xy.text", size = 10, color = "gray20") +
+  geom_hline(yintercept = 0, linetype = 3, size = 1, colour = "gray40")
 ```
 
 ```{r Save the Habitat Matching by Functional Diversity Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_S4-mismatch_by_trait_diversity-base.pdf", 
-			 plot = mismatch.by.trait.diversity.figure, 
-			 device = "pdf",
-			 path = "figures/base/",
-			 width = 12, 
-			 height = 12,
-			 units = "in", 
-			 dpi = 900)
+ggsave("figure_S4-mismatch_by_trait_diversity-base.pdf",
+  plot = mismatch.by.trait.diversity.figure,
+  device = "pdf",
+  path = "figures/base/",
+  width = 12,
+  height = 12,
+  units = "in",
+  dpi = 600
+)
 ```
 
 
@@ -733,33 +777,34 @@ knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S4-mismatch_by_t
 
 ```{r DisEQ LMM Figure, echo = TRUE}
 DisEQ.LMM.figure <- ggscatter(
-	data = final.DisEQ.data,
-	x = "mismatch.scaled",
-	y = "filtering.scaled",
-	size = 1,
-	color = "ecoregion",
-	xlab = "Habitat Matching",
-	ylab = "Environmental Filtering",
-	palette = viridis.ecoregion,
-	ggtheme = theme_pubr(),
-	legend = "right",
-	add = "reg.line",
-	conf.int = TRUE
-	) +
-	geom_hline(yintercept = 0, linetype = 3, size = 1, colour = "gray40") +
-	geom_vline(xintercept = 0, linetype = 3, size = 1, colour = "gray40")
+  data = final.DisEQ.data,
+  x = "mismatch.scaled",
+  y = "filtering.scaled",
+  size = 1,
+  color = "ecoregion",
+  xlab = "Habitat Matching",
+  ylab = "Environmental Filtering",
+  palette = viridis.ecoregion,
+  ggtheme = theme_pubr(),
+  legend = "top",
+  add = "reg.line",
+  conf.int = TRUE
+) +
+  geom_hline(yintercept = 0, linetype = 3, size = 1, colour = "gray40") +
+  geom_vline(xintercept = 0, linetype = 3, size = 1, colour = "gray40")
 ```
 
 ```{r Save the DisEQ LMM Figure, include = FALSE}
 ## Export the figure
-ggsave("figure_S5-DisEQ_regression-base.pdf", 
-			 plot = DisEQ.LMM.figure, 
-			 device = "pdf",
-			 path = "figures/base/",
-			 width = 12, 
-			 height = 12,
-			 units = "in", 
-			 dpi = 900)
+ggsave("figure_S5-DisEQ_regression-base.pdf",
+  plot = DisEQ.LMM.figure,
+  device = "pdf",
+  path = "figures/base/",
+  width = 12,
+  height = 12,
+  units = "in",
+  dpi = 600
+)
 ```
 
 \newpage
@@ -783,16 +828,23 @@ NMDS.groups <- final.data[rowSums(final.data[, 67:142]) > 0, 25]
 pdf("figures/base/figure_S6A-community_composition-base.pdf", width = 8, height = 6)
 
 ## NMDS plot (axes 1 and 2)
-axes.1_2 <- ordiplot(BC.NMDS, choices = c(1, 2), type = "none", display = "sites",
-										 xlim = c(-1.5, 1.5), ylim = c(-1.5, 1.5), xlab = "NMDS 1", ylab = "NMDS 2")
-ordiellipse(BC.NMDS, groups = NMDS.groups, 
-						draw = "lines", col = viridis.ecoregion, label = FALSE, lwd = 5)
-mtext(text = "Stress = 0.199", side = 3, line = -1.5, adj = 0.95, 
-			cex = 1.05)
+axes.1_2 <- ordiplot(BC.NMDS,
+  choices = c(1, 2), type = "none", display = "sites",
+  xlim = c(-1.5, 1.5), ylim = c(-1.5, 1.5), xlab = "NMDS 1", ylab = "NMDS 2"
+)
+ordiellipse(BC.NMDS,
+  groups = NMDS.groups,
+  draw = "lines", col = viridis.ecoregion, label = FALSE, lwd = 5
+)
+mtext(
+  text = "Stress = 0.199", side = 3, line = -1.5, adj = 0.95,
+  cex = 1.05
+)
 mtext(text = "(A)", side = 3, line = 1.75, adj = 0.05, cex = 1.25)
-legend(1.75, 0.45, c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),  
-			 cex = 0.75, lty = 1, lwd = 4, x.intersp = 0.95, y.intersp = 0.95,
-			 col = viridis.ecoregion)
+legend(1.75, 0.45, c("CPL", "NAP", "NPL", "SAP", "SPL", "TPL", "UMW", "WMT", "XER"),
+  cex = 0.75, lty = 1, lwd = 4, x.intersp = 0.95, y.intersp = 0.95,
+  col = viridis.ecoregion
+)
 ## Export the figure
 dev.off()
 
@@ -801,10 +853,14 @@ dev.off()
 pdf("figures/base/figure_S6B-community_composition-base.pdf", width = 8, height = 6)
 
 ## NMDS plot (axes 1 and 3)
-axes.1_3 <- ordiplot(BC.NMDS, choices = c(1, 3), type = "none", display = "sites",
-										 xlim = c(-1.5, 1.5), ylim = c(-1.5, 1.5), xlab = "NMDS 1", ylab = "NMDS 3")
-ordiellipse(axes.1_3, groups = NMDS.groups, 
-						draw = "lines", col = viridis.ecoregion, label = FALSE, lwd = 5)
+axes.1_3 <- ordiplot(BC.NMDS,
+  choices = c(1, 3), type = "none", display = "sites",
+  xlim = c(-1.5, 1.5), ylim = c(-1.5, 1.5), xlab = "NMDS 1", ylab = "NMDS 3"
+)
+ordiellipse(axes.1_3,
+  groups = NMDS.groups,
+  draw = "lines", col = viridis.ecoregion, label = FALSE, lwd = 5
+)
 mtext(text = "(B)", side = 3, line = 1.75, adj = 0.025, cex = 1.25)
 
 ## Export the figure
@@ -823,22 +879,21 @@ knitr::include_graphics(paste0(getwd(), "/figures/edited/figure_S6-community_com
 # R Session Information
 
 ```{r R Packages, echo = FALSE}
-df_session_packages <- devtools::session_info()$packages %>% 
-  as.data.frame(.) %>% 
-  filter(attached == TRUE) %>% 
-  dplyr::select(loadedversion, date) %>% 
-  rownames_to_column
+df_session_packages <- devtools::session_info()$packages %>%
+  as.data.frame(.) %>%
+  filter(attached == TRUE) %>%
+  dplyr::select(loadedversion, date) %>%
+  rownames_to_column()
 
 colnames(df_session_packages) <- c("Package", "Loaded Version", "Date")
 
 kable(
-  df_session_packages, 
+  df_session_packages,
   booktabs = TRUE,
   caption = "Packages required for data management and figure creation."
-  ) %>%
-	kable_styling(
-		full_width = FALSE,
-  	latex_options = c("HOLD_position", "striped")
-  	) 
+) %>%
+  kable_styling(
+    full_width = FALSE,
+    latex_options = c("HOLD_position", "striped")
+  )
 ```
-
